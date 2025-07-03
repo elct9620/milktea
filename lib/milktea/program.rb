@@ -9,6 +9,7 @@ module Milktea
       @output = output
       @running = false
       @timers = Timers::Group.new
+      @command_queue = Queue.new
     end
 
     def run
@@ -17,11 +18,16 @@ module Milktea
       # Simple timer that prints text once
       @timers.after(0.1) do
         @output.puts "Hello from Milktea!"
-        stop
+        @command_queue << Command::Exit.new
       end
 
       # Run the event loop
-      @timers.wait while running?
+      loop do
+        break unless running?
+
+        @timers.wait
+        process_commands
+      end
     end
 
     def stop
@@ -30,6 +36,26 @@ module Milktea
 
     def running?
       @running == true
+    end
+
+    private
+
+    def process_commands
+      until @command_queue.empty?
+        command = @command_queue.pop(true) # non-blocking pop
+        execute_command(command)
+      end
+    end
+
+    def execute_command(command)
+      case command
+      when Command::None
+        # Do nothing
+      when Command::Exit
+        stop
+      when Command::Batch
+        command.commands.each { |cmd| @command_queue << cmd }
+      end
     end
   end
 end
