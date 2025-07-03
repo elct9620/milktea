@@ -11,6 +11,8 @@ module Milktea
     end
 
     def render(model)
+      @output.print @cursor.clear_screen
+      @output.print @cursor.move_to(0, 0)
       content = model.view
       @output.print content
       @output.flush
