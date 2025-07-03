@@ -86,3 +86,7 @@ Follow these conventions when writing RSpec tests:
 - Uses conventional commits format in English
 - The gemspec uses git to determine which files to include in the gem
 - Currently in early development (v0.1.0) - main functionality needs to be implemented
+
+## Repository Management
+
+- Keep ARCHITECTURE.md updated when we change anything
