@@ -41,6 +41,45 @@ This project follows Clean Architecture and Domain-Driven Design (DDD) principle
 - Monkey patching is disabled for cleaner tests
 - Run individual tests with line numbers for focused development
 
+### RSpec Style Guide
+
+Follow these conventions when writing RSpec tests:
+
+1. **Use `subject` for test targets**:
+   ```ruby
+   subject(:program) { described_class.new }
+   ```
+
+2. **Use `let` for test dependencies**:
+   ```ruby
+   let(:output) { StringIO.new }
+   ```
+
+3. **Use `before` blocks for test setup**:
+   ```ruby
+   before { program.run }
+   ```
+
+4. **Prefer one-line syntax for simple expectations**:
+   ```ruby
+   it { expect(output.string).to include("Hello from Milktea!") }
+   it { is_expected.to be_running }
+   ```
+
+5. **Use `is_expected` when testing the subject directly**:
+   ```ruby
+   it { is_expected.to be_running }  # Preferred
+   # vs
+   it { expect(subject).to be_running }  # Avoid
+   ```
+
+6. **Use descriptive blocks when one-liners aren't sufficient**:
+   ```ruby
+   it "is expected to handle complex scenarios" do
+     # Multiple expectations or setup required
+   end
+   ```
+
 ## Important Notes
 
 - Ruby version requirement: >= 3.1.0

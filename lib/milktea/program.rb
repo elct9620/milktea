@@ -21,11 +21,15 @@ module Milktea
       end
 
       # Run the event loop
-      @timers.wait while @running
+      @timers.wait while running?
     end
 
     def stop
       @running = false
+    end
+
+    def running?
+      @running == true
     end
   end
 end
