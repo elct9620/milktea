@@ -20,7 +20,7 @@
           },
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path | select(endswith(\"_spec.rb\"))' | xargs -r bundle exec rspec -A"
+            "command": "jq -r '.tool_input.file_path | select(endswith(\"_spec.rb\"))' | xargs -r bundle exec rspec"
           }
         ]
       }
