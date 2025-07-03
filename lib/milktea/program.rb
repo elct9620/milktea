@@ -8,7 +8,8 @@ module Milktea
     FPS = 60
     REFRESH_INTERVAL = 1.0 / FPS
 
-    def initialize(output: $stdout)
+    def initialize(model, output: $stdout)
+      @model = model
       @output = output
       @running = false
       @timers = Timers::Group.new
@@ -17,20 +18,12 @@ module Milktea
 
     def run
       @running = true
-
-      # Simple timer that prints text once
-      @timers.after(0.1) do
-        @output.puts "Hello from Milktea!"
-        @message_queue << Message::Exit.new
-      end
-
-      # Main event loop
-      @timers.now_and_every(REFRESH_INTERVAL) do
-        process_messages
-      end
-
-      # Continue processing timers until stopped
+      setup_screen
+      render
+      setup_timers
       @timers.wait while running?
+    ensure
+      restore_screen
     end
 
     def stop
@@ -44,20 +37,53 @@ module Milktea
     private
 
     def process_messages
+      should_render = false
+
       until @message_queue.empty?
         message = @message_queue.pop(true) # non-blocking pop
-        execute_message(message)
+        @model, side_effect = @model.update(message)
+        execute_side_effect(side_effect)
+
+        should_render = true unless message.is_a?(Message::None)
       end
+
+      render if should_render
     end
 
-    def execute_message(message)
-      case message
+    def execute_side_effect(side_effect)
+      case side_effect
       when Message::None
         # Do nothing
       when Message::Exit
         stop
       when Message::Batch
-        message.messages.each { |msg| @message_queue << msg }
+        side_effect.messages.each { |msg| @message_queue << msg }
+      end
+    end
+
+    def render
+      content = @model.view
+      @output.print content
+      @output.flush
+    end
+
+    def setup_screen
+      # Terminal setup can be added here
+    end
+
+    def restore_screen
+      # Terminal cleanup can be added here
+    end
+
+    def setup_timers
+      # Temporary timer to stop the program for testing
+      @timers.after(0.1) do
+        stop
+      end
+
+      # Main event loop
+      @timers.now_and_every(REFRESH_INTERVAL) do
+        process_messages
       end
     end
   end

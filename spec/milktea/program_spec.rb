@@ -4,14 +4,25 @@ require "spec_helper"
 require "stringio"
 
 RSpec.describe Milktea::Program do
-  subject(:program) { described_class.new(output: output) }
+  let(:test_model_class) do
+    Class.new(Milktea::Model) do
+      def view
+        "Hello from Milktea!"
+      end
 
+      def update(_message)
+        [self, Milktea::Message::None.new]
+      end
+    end
+  end
+
+  let(:model) { test_model_class.new }
   let(:output) { StringIO.new }
+  subject(:program) { described_class.new(model, output: output) }
 
-  describe "#run" do
-    before { program.run }
-
-    it { expect(output.string).to include("Hello from Milktea!") }
+  describe "#initialize" do
+    it { expect(program.instance_variable_get(:@model)).to eq(model) }
+    it { expect(program.instance_variable_get(:@output)).to eq(output) }
   end
 
   describe "#running?" do
@@ -24,5 +35,11 @@ RSpec.describe Milktea::Program do
 
       it { is_expected.to be_running }
     end
+  end
+
+  describe "#render" do
+    before { program.send(:render) }
+
+    it { expect(output.string).to include("Hello from Milktea!") }
   end
 end
