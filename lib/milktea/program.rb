@@ -5,6 +5,9 @@ require "timers"
 module Milktea
   # Main program class for running Milktea TUI applications
   class Program
+    FPS = 60
+    REFRESH_INTERVAL = 1.0 / FPS
+
     def initialize(output: $stdout)
       @output = output
       @running = false
@@ -21,13 +24,13 @@ module Milktea
         @command_queue << Command::Exit.new
       end
 
-      # Run the event loop
-      loop do
-        break unless running?
-
-        @timers.wait
+      # Main event loop
+      @timers.now_and_every(REFRESH_INTERVAL) do
         process_commands
       end
+
+      # Continue processing timers until stopped
+      @timers.wait while running?
     end
 
     def stop
