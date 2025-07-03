@@ -12,7 +12,7 @@ module Milktea
       @output = output
       @running = false
       @timers = Timers::Group.new
-      @command_queue = Queue.new
+      @message_queue = Queue.new
     end
 
     def run
@@ -21,12 +21,12 @@ module Milktea
       # Simple timer that prints text once
       @timers.after(0.1) do
         @output.puts "Hello from Milktea!"
-        @command_queue << Command::Exit.new
+        @message_queue << Message::Exit.new
       end
 
       # Main event loop
       @timers.now_and_every(REFRESH_INTERVAL) do
-        process_commands
+        process_messages
       end
 
       # Continue processing timers until stopped
@@ -43,21 +43,21 @@ module Milktea
 
     private
 
-    def process_commands
-      until @command_queue.empty?
-        command = @command_queue.pop(true) # non-blocking pop
-        execute_command(command)
+    def process_messages
+      until @message_queue.empty?
+        message = @message_queue.pop(true) # non-blocking pop
+        execute_message(message)
       end
     end
 
-    def execute_command(command)
-      case command
-      when Command::None
+    def execute_message(message)
+      case message
+      when Message::None
         # Do nothing
-      when Command::Exit
+      when Message::Exit
         stop
-      when Command::Batch
-        command.commands.each { |cmd| @command_queue << cmd }
+      when Message::Batch
+        message.messages.each { |msg| @message_queue << msg }
       end
     end
   end
