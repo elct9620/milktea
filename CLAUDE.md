@@ -128,6 +128,93 @@ Follow these conventions when writing RSpec tests:
    end
    ```
 
+10. **Never test private instance variables directly**:
+    ```ruby
+    # Bad - Testing implementation details
+    it { expect(subject.instance_variable_get(:@output)).to eq($stdout) }
+    
+    # Good - Testing public behavior
+    it { expect(output.string).to include("expected content") }
+    ```
+
+11. **Focus on observable behavior, not implementation**:
+    ```ruby
+    # Bad - Checking internal state
+    it { expect(program.instance_variable_get(:@renderer)).to be_a(Milktea::Renderer) }
+    
+    # Bad - Testing private methods with send()
+    it "delegates rendering to renderer" do
+      program.send(:process_messages)
+      expect(renderer).to have_received(:render).with(model)
+    end
+    
+    # Good - Testing actual public behavior
+    it "delegates to runtime stop" do
+      program.stop
+      expect(runtime).to have_received(:stop)
+    end
+    ```
+
+12. **Prefer `instance_double` over extensive `allow` calls**:
+    ```ruby
+    # Bad - Multiple allow calls
+    let(:runtime) { instance_double(Milktea::Runtime) }
+    before do
+      allow(runtime).to receive(:start)
+      allow(runtime).to receive(:running?).and_return(false)
+      allow(runtime).to receive(:tick).and_return(model)
+      allow(runtime).to receive(:render?).and_return(false)
+    end
+    
+    # Good - Configure instance_double with expected methods
+    let(:runtime) do
+      instance_double(Milktea::Runtime, 
+        start: nil,
+        running?: false,
+        tick: model,
+        render?: false
+      )
+    end
+    ```
+
+13. **Use spies for testing delegation instead of expect().to receive()**:
+    ```ruby
+    # Bad - Pre-setting expectations
+    it "delegates to runtime stop" do
+      expect(runtime).to receive(:stop)
+      program.stop
+    end
+    
+    # Good - Using spy pattern
+    let(:runtime) { spy('runtime', running?: false) }
+    
+    it "delegates to runtime stop" do
+      program.stop
+      expect(runtime).to have_received(:stop)
+    end
+    ```
+
+14. **Use RSpec's `output` matcher for testing stdout/stderr**:
+    ```ruby
+    # Good - Using output matcher
+    it "prints to stdout" do
+      expect { renderer.render(model) }.to output("Hello!").to_stdout
+    end
+    
+    # Also good - Testing with regex
+    it "prints to stdout" do
+      expect { renderer.render(model) }.to output(/Hello/).to_stdout
+    end
+    
+    # Bad - Manual stdout capture
+    it "prints to stdout" do
+      stdout_capture = StringIO.new
+      renderer = described_class.new(stdout_capture)
+      renderer.render(model)
+      expect(stdout_capture.string).to include("Hello!")
+    end
+    ```
+
 ## Important Notes
 
 - Ruby version requirement: >= 3.1.0

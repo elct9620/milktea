@@ -18,43 +18,43 @@ RSpec.describe Milktea::Program do
 
   let(:model) { test_model_class.new }
   let(:output) { StringIO.new }
-  let(:runtime) { instance_double(Milktea::Runtime) }
-  subject(:program) { described_class.new(model, runtime: runtime, output: output) }
-
-  describe "#initialize" do
-    it { expect(program.instance_variable_get(:@model)).to eq(model) }
-    it { expect(program.instance_variable_get(:@runtime)).to eq(runtime) }
-    it { expect(program.instance_variable_get(:@output)).to eq(output) }
-  end
+  let(:runtime) { spy("runtime", running?: false) }
+  let(:renderer) { spy("renderer") }
+  subject(:program) { described_class.new(model, runtime: runtime, renderer: renderer) }
 
   describe "#running?" do
-    before { allow(runtime).to receive(:running?).and_return(running_state) }
-
     context "when runtime is not running" do
-      let(:running_state) { false }
+      let(:runtime) { spy("runtime", running?: false) }
 
       it { is_expected.not_to be_running }
     end
 
     context "when runtime is running" do
-      let(:running_state) { true }
+      let(:runtime) { spy("runtime", running?: true) }
 
       it { is_expected.to be_running }
     end
   end
 
-  describe "#render" do
-    before { program.send(:render) }
+  describe "default renderer creation" do
+    let(:runtime_for_run) do
+      spy("runtime_for_run",
+          start: nil,
+          running?: false,
+          tick: model,
+          render?: false)
+    end
+    subject(:program_with_output) { described_class.new(model, runtime: runtime_for_run, output: output) }
 
-    it { expect(output.string).to include("Hello from Milktea!") }
+    it "creates a default renderer when none provided" do
+      expect { program_with_output.run }.not_to raise_error
+    end
   end
 
   describe "#stop" do
-    before do
-      allow(runtime).to receive(:stop)
+    it "delegates to runtime stop" do
       program.stop
+      expect(runtime).to have_received(:stop)
     end
-
-    it { expect(runtime).to have_received(:stop) }
   end
 end

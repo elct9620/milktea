@@ -8,21 +8,21 @@ module Milktea
     FPS = 60
     REFRESH_INTERVAL = 1.0 / FPS
 
-    def initialize(model, runtime: nil, output: $stdout)
+    def initialize(model, runtime: nil, renderer: nil, output: $stdout)
       @model = model
       @runtime = runtime || Runtime.new
-      @output = output
+      @renderer = renderer || Renderer.new(output)
       @timers = Timers::Group.new
     end
 
     def run
       @runtime.start
-      setup_screen
-      render
+      @renderer.setup_screen
+      @renderer.render(@model)
       setup_timers
       @timers.wait while running?
     ensure
-      restore_screen
+      @renderer.restore_screen
     end
 
     def stop
@@ -37,21 +37,7 @@ module Milktea
 
     def process_messages
       @model = @runtime.tick(@model)
-      render if @runtime.render?
-    end
-
-    def render
-      content = @model.view
-      @output.print content
-      @output.flush
-    end
-
-    def setup_screen
-      # Terminal setup can be added here
-    end
-
-    def restore_screen
-      # Terminal cleanup can be added here
+      @renderer.render(@model) if @runtime.render?
     end
 
     def setup_timers
