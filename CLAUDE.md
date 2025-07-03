@@ -30,9 +30,19 @@ Milktea is a Terminal User Interface (TUI) framework for Ruby, inspired by the B
 This project follows Clean Architecture and Domain-Driven Design (DDD) principles. The codebase structure:
 
 - `/lib/milktea.rb` - Main module entry point with Zeitwerk autoloading
-- `/lib/milktea/` - Core framework implementation (to be developed)
+- `/lib/milktea/model.rb` - Base Model class for Elm Architecture components
+- `/lib/milktea/runtime.rb` - Message processing and execution state management
+- `/lib/milktea/program.rb` - Main TUI program with event loop
+- `/lib/milktea/message.rb` - Message definitions for events
 - Uses TTY gems for terminal interaction (tty-box, tty-cursor, tty-reader, tty-screen)
 - Event handling through the `timers` gem
+
+### Core Components
+
+- **Model**: Base class implementing Elm Architecture with immutable state
+- **Runtime**: Manages message queue and execution state with dependency injection support
+- **Program**: Handles terminal setup, rendering, and main event loop
+- **Message**: Event system using Ruby's Data.define for immutable messages
 
 ## Testing Approach
 
@@ -123,7 +133,9 @@ Follow these conventions when writing RSpec tests:
 - Ruby version requirement: >= 3.1.0
 - Uses conventional commits format in English
 - The gemspec uses git to determine which files to include in the gem
-- Currently in early development (v0.1.0) - main functionality needs to be implemented
+- Currently in early development (v0.1.0) with core architecture implemented
+- Runtime-based architecture allows dependency injection for testing and customization
+- Program uses dependency injection pattern: `Program.new(model, runtime: custom_runtime)`
 
 ## Repository Management
 

@@ -18,20 +18,26 @@ RSpec.describe Milktea::Program do
 
   let(:model) { test_model_class.new }
   let(:output) { StringIO.new }
-  subject(:program) { described_class.new(model, output: output) }
+  let(:runtime) { instance_double(Milktea::Runtime) }
+  subject(:program) { described_class.new(model, runtime: runtime, output: output) }
 
   describe "#initialize" do
     it { expect(program.instance_variable_get(:@model)).to eq(model) }
+    it { expect(program.instance_variable_get(:@runtime)).to eq(runtime) }
     it { expect(program.instance_variable_get(:@output)).to eq(output) }
   end
 
   describe "#running?" do
-    context "when program is not started" do
+    before { allow(runtime).to receive(:running?).and_return(running_state) }
+
+    context "when runtime is not running" do
+      let(:running_state) { false }
+
       it { is_expected.not_to be_running }
     end
 
-    context "when program is running" do
-      before { program.instance_variable_set(:@running, true) }
+    context "when runtime is running" do
+      let(:running_state) { true }
 
       it { is_expected.to be_running }
     end
@@ -41,5 +47,14 @@ RSpec.describe Milktea::Program do
     before { program.send(:render) }
 
     it { expect(output.string).to include("Hello from Milktea!") }
+  end
+
+  describe "#stop" do
+    before do
+      allow(runtime).to receive(:stop)
+      program.stop
+    end
+
+    it { expect(runtime).to have_received(:stop) }
   end
 end

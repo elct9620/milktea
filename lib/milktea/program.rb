@@ -8,16 +8,15 @@ module Milktea
     FPS = 60
     REFRESH_INTERVAL = 1.0 / FPS
 
-    def initialize(model, output: $stdout)
+    def initialize(model, runtime: nil, output: $stdout)
       @model = model
+      @runtime = runtime || Runtime.new
       @output = output
-      @running = false
       @timers = Timers::Group.new
-      @message_queue = Queue.new
     end
 
     def run
-      @running = true
+      @runtime.start
       setup_screen
       render
       setup_timers
@@ -27,38 +26,18 @@ module Milktea
     end
 
     def stop
-      @running = false
+      @runtime.stop
     end
 
     def running?
-      @running == true
+      @runtime.running?
     end
 
     private
 
     def process_messages
-      should_render = false
-
-      until @message_queue.empty?
-        message = @message_queue.pop(true) # non-blocking pop
-        @model, side_effect = @model.update(message)
-        execute_side_effect(side_effect)
-
-        should_render = true unless message.is_a?(Message::None)
-      end
-
-      render if should_render
-    end
-
-    def execute_side_effect(side_effect)
-      case side_effect
-      when Message::None
-        # Do nothing
-      when Message::Exit
-        stop
-      when Message::Batch
-        side_effect.messages.each { |msg| @message_queue << msg }
-      end
+      @model = @runtime.tick(@model)
+      render if @runtime.render?
     end
 
     def render
@@ -76,11 +55,6 @@ module Milktea
     end
 
     def setup_timers
-      # Temporary timer to stop the program for testing
-      @timers.after(0.1) do
-        stop
-      end
-
       # Main event loop
       @timers.now_and_every(REFRESH_INTERVAL) do
         process_messages

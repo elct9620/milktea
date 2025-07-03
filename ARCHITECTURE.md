@@ -211,6 +211,73 @@ module Milktea
 end
 ```
 
+### Runtime Implementation
+
+```ruby
+module Milktea
+  class Runtime
+    def initialize(queue: Queue.new)
+      @queue = queue
+      @running = false
+      @should_render = false
+    end
+
+    def tick(model)
+      has_render_messages = false
+
+      until @queue.empty?
+        message = @queue.pop(true) # non-blocking pop
+        model, side_effect = model.update(message)
+        execute_side_effect(side_effect)
+
+        # Only Message::None instances should not trigger render
+        has_render_messages = true unless message.is_a?(Message::None)
+      end
+
+      @should_render = has_render_messages
+      model
+    end
+
+    def render?
+      @should_render
+    end
+
+    def stop?
+      !@running
+    end
+
+    def running?
+      @running
+    end
+
+    def start
+      @running = true
+    end
+
+    def stop
+      @running = false
+    end
+
+    def enqueue(message)
+      @queue << message
+    end
+
+    private
+
+    def execute_side_effect(side_effect)
+      case side_effect
+      when Message::None
+        # Do nothing
+      when Message::Exit
+        stop
+      when Message::Batch
+        side_effect.messages.each { |msg| enqueue(msg) }
+      end
+    end
+  end
+end
+```
+
 ### Program Implementation
 
 ```ruby
@@ -218,90 +285,58 @@ module Milktea
   class Program
     FPS = 60
     REFRESH_INTERVAL = 1.0 / FPS
-    FILE_CHECK_INTERVAL = 0.5
     
-    def initialize(initial_model, output: $stdout)
-      @model = initial_model
+    def initialize(model, runtime: nil, output: $stdout)
+      @model = model
+      @runtime = runtime || Runtime.new
       @output = output
-      @running = false
       @timers = Timers::Group.new
-      @message_queue = Queue.new
     end
     
     def run
-      @running = true
+      @runtime.start
       setup_screen
-      
-      # Main event loop
-      @timers.now_and_every(REFRESH_INTERVAL) do
-        handle_input
-        process_messages
-      end
-      
+      render
+      setup_timers
       @timers.wait while running?
     ensure
       restore_screen
     end
     
     def stop
-      @running = false
+      @runtime.stop
+    end
+
+    def running?
+      @runtime.running?
     end
     
     private
     
-    def handle_input
-      # Non-blocking input handling
-      # Implementation depends on TTY::Reader
-    end
-    
     def process_messages
-      should_render = false
-      
-      until @message_queue.empty?
-        message = @message_queue.pop(true)
-        @model, side_effect = @model.update(message)
-        execute_side_effect(side_effect)
-        
-        # Mark for rendering if message indicates state change
-        should_render = true unless message.is_a?(Message::None)
-      end
-      
-      render if should_render
+      @model = @runtime.tick(@model)
+      render if @runtime.render?
     end
     
     def render
       content = @model.view
-      
-      @output.print TTY::Cursor.clear_screen
-      @output.print TTY::Cursor.move_to(0, 0)
       @output.print content
       @output.flush
     end
-    
-    def execute_side_effect(side_effect)
-      case side_effect
-      when Message::None
-        # Do nothing
-      when Message::Quit
-        stop
-      when Message::Later
-        @timers.after(side_effect.delay) do
-          @message_queue << side_effect.message
-        end
-      when Message::Batch
-        side_effect.messages.each { |msg| @message_queue << msg }
+
+    def setup_timers
+      # Main event loop
+      @timers.now_and_every(REFRESH_INTERVAL) do
+        process_messages
       end
     end
     
     def setup_screen
-      @output.print TTY::Cursor.save
-      @output.print TTY::Cursor.hide
-      @output.print TTY::Cursor.clear_screen
+      # Terminal setup can be added here
     end
     
     def restore_screen
-      @output.print TTY::Cursor.show
-      @output.print TTY::Cursor.restore
+      # Terminal cleanup can be added here
     end
   end
 end
@@ -340,7 +375,7 @@ class Counter < Milktea::Model
       when 'r'
         [with(count: 0), Milktea::Message::None.new]
       when 'q'
-        [self, Milktea::Message::Quit.new]
+        [self, Milktea::Message::Exit.new]
       else
         [self, Milktea::Message::None.new]
       end
