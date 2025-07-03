@@ -10,7 +10,9 @@ Milktea is a Ruby Terminal User Interface (TUI) framework inspired by The Elm Ar
 
 - **Model**: A ViewModel that encapsulates both state and behavior for a component
 - **Message**: An event that triggers state changes, replacing traditional commands
-- **Program**: The main event loop that manages rendering and message processing
+- **Program**: The main event loop that manages keyboard input and coordinates rendering
+- **Renderer**: Handles terminal screen management, clearing, and output rendering
+- **Runtime**: Manages message queue processing and execution state
 
 ### Architecture Principles
 
@@ -195,7 +197,7 @@ module Milktea
     ReloadDetected = Data.define
     
     # Input messages
-    KeyPress = Data.define(:key)
+    KeyPress = Data.define(:key, :value, :ctrl, :alt, :shift)
     KeyUp = Data.define
     KeyDown = Data.define
     KeyEnter = Data.define
@@ -278,6 +280,36 @@ module Milktea
 end
 ```
 
+### Renderer Implementation
+
+```ruby
+module Milktea
+  class Renderer
+    def initialize(output = $stdout)
+      @output = output
+      @cursor = TTY::Cursor
+    end
+
+    def setup_screen
+      @output.print @cursor.clear_screen
+      @output.print @cursor.move_to(0, 0)
+    end
+
+    def restore_screen
+      @output.print @cursor.clear_screen
+      @output.print @cursor.move_to(0, 0)
+    end
+
+    def render(model)
+      @output.print @cursor.clear_screen
+      @output.print @cursor.move_to(0, 0)
+      @output.print model.view
+      @output.flush
+    end
+  end
+end
+```
+
 ### Program Implementation
 
 ```ruby
@@ -286,21 +318,22 @@ module Milktea
     FPS = 60
     REFRESH_INTERVAL = 1.0 / FPS
     
-    def initialize(model, runtime: nil, output: $stdout)
+    def initialize(model, runtime: nil, renderer: nil)
       @model = model
       @runtime = runtime || Runtime.new
-      @output = output
+      @renderer = renderer || Renderer.new
       @timers = Timers::Group.new
+      @reader = TTY::Reader.new(interrupt: :error)
     end
     
     def run
       @runtime.start
-      setup_screen
-      render
+      @renderer.setup_screen
+      @renderer.render(@model)
       setup_timers
       @timers.wait while running?
     ensure
-      restore_screen
+      @renderer.restore_screen
     end
     
     def stop
@@ -314,14 +347,25 @@ module Milktea
     private
     
     def process_messages
+      read_keyboard_input
       @model = @runtime.tick(@model)
-      render if @runtime.render?
+      @renderer.render(@model) if @runtime.render?
     end
-    
-    def render
-      content = @model.view
-      @output.print content
-      @output.flush
+
+    def read_keyboard_input
+      key_event = @reader.read_keypress(nonblock: true)
+      return unless key_event
+
+      message = Message::KeyPress.new(
+        key: key_event.name || key_event.value,
+        value: key_event.value,
+        ctrl: key_event.ctrl?,
+        alt: key_event.alt?,
+        shift: key_event.shift?
+      )
+      @runtime.enqueue(message)
+    rescue Interrupt
+      @runtime.stop
     end
 
     def setup_timers
@@ -329,14 +373,6 @@ module Milktea
       @timers.now_and_every(REFRESH_INTERVAL) do
         process_messages
       end
-    end
-    
-    def setup_screen
-      # Terminal setup can be added here
-    end
-    
-    def restore_screen
-      # Terminal cleanup can be added here
     end
   end
 end
@@ -370,12 +406,12 @@ class Counter < Milktea::Model
     case message
     when Milktea::Message::KeyPress
       case message.key
-      when 'i'
+      when 'i', '+'
         [with(count: state[:count] + 1), Milktea::Message::None.new]
       when 'r'
         [with(count: 0), Milktea::Message::None.new]
       when 'q'
-        [self, Milktea::Message::Exit.new]
+        [self, Milktea::Message::Quit.new]
       else
         [self, Milktea::Message::None.new]
       end
@@ -388,6 +424,12 @@ end
 # Usage
 counter = Counter.new
 program = Milktea::Program.new(counter)
+program.run
+
+# With dependency injection
+runtime = Milktea::Runtime.new
+renderer = Milktea::Renderer.new
+program = Milktea::Program.new(counter, runtime: runtime, renderer: renderer)
 program.run
 ```
 
@@ -521,7 +563,8 @@ end
 RSpec.describe Milktea::Program do
   let(:initial_model) { Counter.new }
   let(:output) { StringIO.new }
-  subject(:program) { described_class.new(initial_model, output: output) }
+  let(:renderer) { Milktea::Renderer.new(output) }
+  subject(:program) { described_class.new(initial_model, renderer: renderer) }
   
   describe '#run' do
     it 'renders initial model' do
