@@ -12,6 +12,13 @@ module Milktea
     # Timer tick message
     Tick = Data.define
 
+    # Keyboard event message
+    KeyPress = Data.define(:key, :value, :ctrl, :alt, :shift) do
+      def initialize(key:, value:, ctrl: false, alt: false, shift: false)
+        super
+      end
+    end
+
     # Batch multiple messages
     Batch = Data.define(:messages) do
       def initialize(messages: [])
