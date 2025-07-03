@@ -48,16 +48,23 @@ Follow these conventions when writing RSpec tests:
 1. **Use `subject` for test targets**:
    ```ruby
    subject(:program) { described_class.new }
+   subject(:new_model) { model.with(count: 5) }
    ```
 
-2. **Use `let` for test dependencies**:
+2. **Use `let` for test dependencies and lazy evaluation**:
    ```ruby
    let(:output) { StringIO.new }
+   let(:new_model) { result.first }
+   let(:message) { result.last }
    ```
 
-3. **Use `before` blocks for test setup**:
+3. **Use `context` + `before` for shared setup**:
    ```ruby
-   before { program.run }
+   context "with increment message" do
+     subject(:result) { model.update(:increment) }
+     
+     it { expect(new_model.state[:count]).to eq(1) }
+   end
    ```
 
 4. **Prefer one-line syntax for simple expectations**:
@@ -73,7 +80,38 @@ Follow these conventions when writing RSpec tests:
    it { expect(subject).to be_running }  # Avoid
    ```
 
-6. **Use descriptive blocks when one-liners aren't sufficient**:
+6. **Use `.to change()` for testing immutability**:
+   ```ruby
+   it { expect { model.update(:increment) }.not_to change(model, :state) }
+   it { expect { model.with(count: 5) }.not_to change(model, :state) }
+   ```
+
+7. **Each `it` block should have only one expectation**:
+   ```ruby
+   # Good
+   it { expect(new_model).not_to be(model) }
+   it { expect(new_model.state[:count]).to eq(5) }
+   
+   # Avoid
+   it "creates new instance with updated state" do
+     new_model = model.with(count: 5)
+     expect(new_model).not_to be(model)
+     expect(new_model.state[:count]).to eq(5)
+   end
+   ```
+
+8. **Use `context` to group related test scenarios**:
+   ```ruby
+   context "when merging with existing state" do
+     let(:model_with_data) { test_model_class.new(count: 1, name: "test") }
+     subject(:merged_model) { model_with_data.with(count: 2) }
+     
+     it { expect(merged_model.state[:count]).to eq(2) }
+     it { expect(merged_model.state[:name]).to eq("test") }
+   end
+   ```
+
+9. **Use descriptive blocks when one-liners aren't sufficient**:
    ```ruby
    it "is expected to handle complex scenarios" do
      # Multiple expectations or setup required

@@ -36,70 +36,54 @@ RSpec.describe Milktea::Model do
       expect(custom_model.state[:count]).to eq(5)
     end
 
-    it "freezes the state" do
-      expect(model.state).to be_frozen
-    end
+    it { expect(model.state).to be_frozen }
 
-    it "uses default state when no state provided" do
-      expect(model.state[:count]).to eq(0)
-    end
+    it { expect(model.state[:count]).to eq(0) }
   end
 
   describe "#state" do
-    it "provides read access to state" do
-      expect(model.state).to eq({ count: 0 })
-    end
+    it { expect(model.state).to eq({ count: 0 }) }
   end
 
   describe "#with" do
-    it "creates new instance with updated state" do
-      new_model = model.with(count: 5)
+    subject(:new_model) { model.with(count: 5) }
 
-      expect(new_model).not_to be(model)
-      expect(new_model.state[:count]).to eq(5)
-      expect(model.state[:count]).to eq(0)
-    end
+    it { expect(new_model).not_to be(model) }
+    it { expect(new_model.state[:count]).to eq(5) }
+    it { expect { model.with(count: 5) }.not_to change(model, :state) }
 
-    it "preserves existing state when merging" do
-      model_with_data = test_model_class.new(count: 1, name: "test")
-      new_model = model_with_data.with(count: 2)
+    context "when merging with existing state" do
+      let(:model_with_data) { test_model_class.new(count: 1, name: "test") }
+      subject(:merged_model) { model_with_data.with(count: 2) }
 
-      expect(new_model.state[:count]).to eq(2)
-      expect(new_model.state[:name]).to eq("test")
+      it { expect(merged_model.state[:count]).to eq(2) }
+      it { expect(merged_model.state[:name]).to eq("test") }
     end
   end
 
   describe "#view" do
     it "raises NotImplementedError for base class" do
       base_model = Milktea::Model.new
-
       expect { base_model.view }.to raise_error(NotImplementedError)
     end
 
-    it "can be implemented by subclasses" do
-      expect(model.view).to eq("Count: 0")
-    end
+    it { expect(model.view).to eq("Count: 0") }
   end
 
   describe "#update" do
     it "raises NotImplementedError for base class" do
       base_model = Milktea::Model.new
-
       expect { base_model.update(:test) }.to raise_error(NotImplementedError)
     end
 
-    it "returns updated model and message tuple" do
-      new_model, message = model.update(:increment)
+    context "with increment message" do
+      subject(:result) { model.update(:increment) }
+      let(:new_model) { result.first }
+      let(:message) { result.last }
 
-      expect(new_model.state[:count]).to eq(1)
-      expect(message).to be_a(Milktea::Message::None)
-    end
-
-    it "preserves immutability" do
-      original_count = model.state[:count]
-      model.update(:increment)
-
-      expect(model.state[:count]).to eq(original_count)
+      it { expect(new_model.state[:count]).to eq(1) }
+      it { expect(message).to be_a(Milktea::Message::None) }
+      it { expect { model.update(:increment) }.not_to change(model, :state) }
     end
   end
 end
