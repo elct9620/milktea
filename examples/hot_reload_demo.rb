@@ -43,7 +43,7 @@ gets
 # Configure Milktea for hot reloading
 config = Milktea.configure do |c|
   # Point to our demo components directory
-  c.app_dir = "hot_reload_demo"
+  c.app_dir = "examples/hot_reload_demo/models"
 
   # Enable hot reloading explicitly
   c.hot_reloading = true

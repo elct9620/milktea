@@ -25,6 +25,73 @@ Milktea is a Terminal User Interface (TUI) framework for Ruby, inspired by the B
 ### Development Tools
 - `bin/console` - Interactive Ruby console with gem loaded
 
+## Hot Reloading Development
+
+### Setting Up Hot Reloading
+
+Hot reloading requires the Milktea::Loader system and specific configuration for proper operation:
+
+```ruby
+# Configure with models directory path
+config = Milktea.configure do |c|
+  # IMPORTANT: app_dir must point to the models directory for Zeitwerk
+  c.app_dir = "examples/hot_reload_demo/models"
+  c.hot_reloading = true
+end
+
+# Create independent loader
+loader = Milktea::Loader.new(config)
+loader.start # Automatically enables hot_reload if config.hot_reloading?
+
+# Create and run program
+model = DemoModel.new
+program = Milktea::Program.new(model, config: config)
+```
+
+### Critical Implementation Details
+
+1. **app_dir Path Configuration**:
+   - `app_dir` is relative to project root directory
+   - For examples without Gemfile, include full path: `"examples/hot_reload_demo/models"`
+   - Must point to the actual models directory (Zeitwerk requirement)
+
+2. **Model Reload Handling**:
+   - Models must handle `Message::Reload` events
+   - Use `with` method to rebuild model instances with fresh classes
+   ```ruby
+   when Milktea::Message::Reload
+     # Hot reload detected - rebuild model with fresh class
+     [with, Milktea::Message::None.new]
+   ```
+
+3. **Class Reference in Model#with**:
+   - Use `Kernel.const_get(self.class.name).new(merged_state)` instead of `self.class.new`
+   - This ensures fresh class definitions are used after reload
+   - `self.class` returns cached/old class objects during hot reload
+
+4. **File Structure Requirements**:
+   - Zeitwerk requires models to be in a `models/` directory
+   - File names must match class names (e.g., `demo_model.rb` for `DemoModel`)
+   - Use conventional Ruby file naming (snake_case files, PascalCase classes)
+
+### Testing Hot Reloading
+
+1. Run the hot reload demo: `ruby examples/hot_reload_demo.rb`
+2. Edit files in `examples/hot_reload_demo/models/` while program is running
+3. Save changes and observe immediate updates in the running program
+4. Try modifying:
+   - View content and layout
+   - Key bindings and behavior
+   - State structure and default values
+   - Child model interactions
+
+### Troubleshooting
+
+- **Models not reloading**: Check `app_dir` points to correct models directory
+- **Old behavior persists**: Ensure `Kernel.const_get` is used in `Model#with`
+- **Reload events ignored**: Verify `Message::Reload` handling in model `update` method
+- **Listen gem not found**: Install with `gem install listen` for file watching
+
 ## Architecture
 
 This project follows Clean Architecture and Domain-Driven Design (DDD) principles. The codebase structure:

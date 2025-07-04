@@ -46,7 +46,7 @@ class DemoModel < Milktea::Model
       handle_keypress(message)
     when Milktea::Message::Reload
       # Hot reload detected - model will be automatically rebuilt
-      [self, Milktea::Message::None.new]
+      [with, Milktea::Message::None.new]
     else
       [self, Milktea::Message::None.new]
     end
