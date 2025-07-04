@@ -9,6 +9,7 @@ Milktea is a Ruby Terminal User Interface (TUI) framework inspired by The Elm Ar
 ### Terminology
 
 - **Model**: A ViewModel that encapsulates both state and behavior for a component
+- **Child Model**: Nested models declared using DSL that receive mapped state from parent
 - **Message**: An event that triggers state changes, replacing traditional commands
 - **Program**: The main event loop that manages keyboard input and coordinates rendering
 - **Renderer**: Handles terminal screen management, clearing, and output rendering
@@ -20,6 +21,7 @@ Milktea is a Ruby Terminal User Interface (TUI) framework inspired by The Elm Ar
 2. **Immutable State**: Models create new instances rather than mutating existing state
 3. **Pure Functions**: View and update methods produce consistent outputs for the same inputs
 4. **Composable Components**: Models can contain child models forming a tree structure
+5. **Simple Child Management**: Child models are declaratively defined and automatically rebuilt on state changes
 
 ## Architecture Diagrams
 
@@ -135,9 +137,25 @@ graph TB
 ```ruby
 module Milktea
   class Model
-    def initialize(state = {}, children: [])
+    attr_reader :state, :children
+    
+    class << self
+      def child(child_class, state_mapper = nil)
+        @child_definitions ||= []
+        @child_definitions << {
+          class: child_class,
+          state_mapper: state_mapper || ->(state) { {} }
+        }
+      end
+      
+      def child_definitions
+        @child_definitions ||= []
+      end
+    end
+    
+    def initialize(state = {})
       @state = default_state.merge(state).freeze
-      @children = children.freeze
+      @children = build_children(@state)
     end
     
     def view
@@ -149,34 +167,23 @@ module Milktea
     end
     
     def with(new_state = {})
-      self.class.new(@state.merge(new_state), children: @children)
+      merged_state = @state.merge(new_state)
+      self.class.new(merged_state)
     end
     
-    def with_children(new_children)
-      self.class.new(@state, children: new_children)
-    end
-    
-    def add_child(child)
-      self.class.new(@state, children: @children + [child])
-    end
-    
-    def update_child(index, new_child)
-      new_children = @children.dup
-      new_children[index] = new_child
-      self.class.new(@state, children: new_children)
-    end
-    
-    protected
-    
-    def state
-      @state
-    end
-    
-    def children
-      @children
+    def children_views
+      @children.map(&:view).join("\n")
     end
     
     private
+    
+    def build_children(parent_state)
+      self.class.child_definitions.map do |definition|
+        child_class = definition[:class]
+        child_state = definition[:state_mapper].call(parent_state)
+        child_class.new(child_state)
+      end.freeze
+    end
     
     def default_state
       {}
@@ -437,35 +444,33 @@ program.run
 
 ```ruby
 class Dashboard < Milktea::Model
-  def initialize(state = {}, children: [])
-    default_children = [
-      Counter.new,
-      StatusBar.new(message: "Ready")
-    ]
-    super(state, children: children.presence || default_children)
+  class << self
+    child Counter, ->(state) { { count: state[:count] } }
+    child StatusBar, ->(state) { { message: state[:status_message] } }
   end
   
+  private
+  
+  def default_state
+    { count: 0, status_message: "Ready", app_version: "1.0" }
+  end
+  
+  public
+  
   def view
-    content = [
-      "=== Dashboard ===",
-      "",
-      children[0].view,  # Counter
-      "",
-      children[1].view   # Status Bar
-    ].join("\n")
-    
-    TTY::Box.frame(content, padding: 1)
+    TTY::Box.frame(children_views, title: "Dashboard v#{state[:app_version]}")
   end
   
   def update(message)
     case message
     when Milktea::Message::KeyPress
       case message.key
-      when '1'
-        # Route to counter
-        counter = children[0]
-        new_counter, side_effect = counter.update(message)
-        [update_child(0, new_counter), side_effect]
+      when 'i'
+        [with(count: state[:count] + 1), Milktea::Message::None.new]
+      when 'r'
+        [with(count: 0, status_message: "Reset!"), Milktea::Message::None.new]
+      when 'q'
+        [self, Milktea::Message::Quit.new]
       else
         [self, Milktea::Message::None.new]
       end
@@ -483,38 +488,25 @@ end
 The framework supports automatic code reloading during development:
 
 ```ruby
-class DevProgram < Milktea::Program
-  def initialize(initial_model, watch_paths: [])
-    super(initial_model)
-    @reloader = setup_reloader(watch_paths)
-  end
-  
-  private
-  
-  def setup_reloader(watch_paths)
-    # Implementation using Zeitwerk and file watching
-    # Preserves current model state during reloads
-  end
-  
-  def handle_reload
-    # Extract current state
-    current_state = extract_state(@model)
-    
-    # Reload code
-    @reloader.reload
-    
-    # Recreate model with preserved state
-    @model = recreate_model_with_state(current_state)
+class Program
+  def handle_hot_reload
+    # Simple approach: let Root Model rebuild itself and all children
+    # This automatically uses the updated class definitions
+    @model = @model.with({})
+    @runtime.enqueue(Message::ReloadDetected.new)
   end
 end
 ```
 
-### State Preservation Strategy
+### Hot Reloading Strategy
 
-1. **Extract State**: Recursively extract state from model tree
-2. **Reload Code**: Update class definitions
-3. **Recreate Models**: Instantiate new models with preserved state
-4. **Continue Execution**: Resume normal operation
+1. **Detect Code Changes**: File watcher detects Ruby file modifications
+2. **Reload Classes**: Zeitwerk reloads the changed class definitions
+3. **Rebuild Model Tree**: Call `@model.with({})` on the root model
+4. **Automatic Propagation**: All child models are automatically rebuilt with fresh classes
+5. **Continue Execution**: Resume normal operation with updated models
+
+The key insight is that since children are always rebuilt when `with` is called, Hot Reloading becomes trivial - just trigger a rebuild of the root model.
 
 ## Performance Optimization
 
