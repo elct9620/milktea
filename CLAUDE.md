@@ -73,6 +73,10 @@ Follow these conventions when writing RSpec tests:
    subject(:program) { described_class.new }
    subject(:new_model) { model.with(count: 5) }
    subject(:custom_model) { test_model_class.new(count: 5) }
+   
+   # For simple cases, use implicit subject
+   subject { described_class.root }
+   subject { described_class.env }
    ```
 
 3. **Use `let` for test dependencies and lazy evaluation**:
@@ -104,11 +108,36 @@ Follow these conventions when writing RSpec tests:
    ```ruby
    it { is_expected.to be_running }  # Preferred
    it { is_expected.not_to be(model) }
-   # vs
-   it { expect(subject).to be_running }  # Avoid
+   it { is_expected.to be_a(Pathname) }
+   it { is_expected.to eq(:test) }
+   
+   # vs - Avoid these when subject is available
+   it { expect(subject).to be_running }
+   it { expect(described_class.root).to be_a(Pathname) }
    ```
 
-6. **Use `.to change()` for testing immutability**:
+6. **Use `before` blocks for setup actions, not variable assignments**:
+   ```ruby
+   # Good - Setup actions in before blocks
+   context "when configuring with block" do
+     before do
+       described_class.configure do |config|
+         config.app_dir = "custom"
+         config.hot_reloading = false
+       end
+     end
+
+     it { expect(config.app_dir).to eq("custom") }
+     it { expect(config.hot_reloading).to be(false) }
+   end
+   
+   # Avoid - Variable assignments should use let/subject
+   before do
+     @config = described_class.configure { |c| c.app_dir = "custom" }
+   end
+   ```
+
+7. **Use `.to change()` for testing immutability**:
    ```ruby
    it { expect { model.update(:increment) }.not_to change(model, :state) }
    it { expect { model.with(count: 5) }.not_to change(model, :state) }
@@ -243,6 +272,56 @@ Follow these conventions when writing RSpec tests:
       renderer = described_class.new(stdout_capture)
       renderer.render(model)
       expect(stdout_capture.string).to include("Hello!")
+    end
+    ```
+
+15. **Use `allow(ENV).to receive(:fetch)` for environment variable mocking**:
+    ```ruby
+    # Good - Mock ENV.fetch calls
+    before { allow(ENV).to receive(:fetch).with("MILKTEA_ENV", nil).and_return("test") }
+    
+    # Avoid - Direct ENV manipulation
+    before { ENV["MILKTEA_ENV"] = "test" }
+    after { ENV.delete("MILKTEA_ENV") }
+    ```
+
+16. **Structure module/class method tests with clear subject definitions**:
+    ```ruby
+    describe ".root" do
+      subject { described_class.root }
+      
+      it { is_expected.to be_a(Pathname) }
+    end
+    
+    describe ".env" do
+      subject { described_class.env }
+      
+      it { is_expected.to be_a(Symbol) }
+      
+      context "when MILKTEA_ENV is set" do
+        before { allow(ENV).to receive(:fetch).with("MILKTEA_ENV", nil).and_return("test") }
+        
+        it { is_expected.to eq(:test) }
+      end
+    end
+    ```
+
+17. **Use named subjects for configuration testing**:
+    ```ruby
+    describe ".configure" do
+      subject(:config) { described_class.config }  # Named subject for clarity
+      
+      context "when configuring with block" do
+        before do
+          described_class.configure do |config|
+            config.app_dir = "custom"
+            config.hot_reloading = false
+          end
+        end
+        
+        it { expect(config.app_dir).to eq("custom") }
+        it { expect(config.hot_reloading).to be(false) }
+      end
     end
     ```
 

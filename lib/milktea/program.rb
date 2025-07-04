@@ -9,10 +9,11 @@ module Milktea
     FPS = 60
     REFRESH_INTERVAL = 1.0 / FPS
 
-    def initialize(model, runtime: nil, renderer: nil, output: $stdout)
+    def initialize(model, runtime: nil, renderer: nil, output: $stdout, config: nil)
       @model = model
       @runtime = runtime || Runtime.new
       @renderer = renderer || Renderer.new(output)
+      @config = config || Milktea.config
       @timers = Timers::Group.new
       @reader = TTY::Reader.new(interrupt: :error)
     end
