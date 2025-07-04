@@ -481,32 +481,77 @@ class Dashboard < Milktea::Model
 end
 ```
 
-## Auto Reloading Support
+## Optional Loader System
 
-### Development Mode
+### Development vs Examples
 
-The framework supports automatic code reloading during development:
+The framework provides an optional Loader system that separates development features from core functionality:
 
 ```ruby
-class Program
-  def handle_hot_reload
-    # Simple approach: let Root Model rebuild itself and all children
-    # This automatically uses the updated class definitions
-    @model = @model.with({})
-    @runtime.enqueue(Message::ReloadDetected.new)
+# Examples: No loader needed (lightweight)
+Milktea.configure do |config|
+  config.loader = nil  # Default - no autoloading overhead
+end
+
+# Applications: Explicit loader configuration
+Milktea.configure do |config|
+  config.loader = Milktea::Loader.new(config.app_path, config.runtime)
+  config.hot_reloading = true
+end
+```
+
+### Loader Architecture
+
+The Loader provides two distinct capabilities:
+
+1. **Basic Autoloading**: Always available when loader is configured
+   - Uses Zeitwerk for Ruby code loading
+   - Enables automatic class loading from app directory
+   - Provides foundation for development workflows
+
+2. **Hot Reloading**: Conditionally enabled based on configuration
+   - Requires Listen gem (optional dependency)
+   - Watches for file changes and triggers reloads
+   - Gracefully degrades when Listen is unavailable
+
+### Implementation Strategy
+
+```ruby
+class Loader
+  def start
+    # Always setup basic autoloading
+    setup_loader
+  end
+
+  def hot_reload
+    # Conditionally enable file watching
+    gem "listen"
+    @listener = Listen.to(@app_dir, only: /\.rb$/) do |modified, added, removed|
+      reload if modified.any? || added.any? || removed.any?
+    end
+    @listener.start
+  rescue Gem::LoadError
+    # Listen gem not available, skip file watching
+  end
+
+  private
+
+  def reload
+    @loader.reload
+    @runtime.enqueue(Message::Reload.new)
   end
 end
 ```
 
 ### Hot Reloading Strategy
 
-1. **Detect Code Changes**: File watcher detects Ruby file modifications
-2. **Reload Classes**: Zeitwerk reloads the changed class definitions
-3. **Rebuild Model Tree**: Call `@model.with({})` on the root model
-4. **Automatic Propagation**: All child models are automatically rebuilt with fresh classes
-5. **Continue Execution**: Resume normal operation with updated models
+1. **Optional Activation**: Only enabled when `config.loader` is explicitly set
+2. **Detect Code Changes**: File watcher detects Ruby file modifications (when Listen available)
+3. **Reload Classes**: Zeitwerk reloads the changed class definitions
+4. **Message Communication**: Send `Message::Reload` to Runtime
+5. **Automatic Propagation**: Runtime handles reload message without additional action needed
 
-The key insight is that since children are always rebuilt when `with` is called, Hot Reloading becomes trivial - just trigger a rebuild of the root model.
+The key insight is that Zeitwerk handles the actual reloading automatically, so the Loader just needs to trigger the reload and notify the Runtime.
 
 ## Performance Optimization
 
