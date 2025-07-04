@@ -2,45 +2,44 @@
 
 require "timers"
 require "tty-reader"
+require "forwardable"
 
 module Milktea
   # Main program class for running Milktea TUI applications
   class Program
+    extend Forwardable
     FPS = 60
     REFRESH_INTERVAL = 1.0 / FPS
 
-    def initialize(model, runtime: nil, renderer: nil, output: $stdout, config: nil)
+    # Delegate config accessors
+    def_delegators :@config, :runtime, :renderer
+
+    # Delegate to runtime and renderer
+    delegate %i[start stop running? tick render? enqueue] => :runtime
+    delegate %i[setup_screen restore_screen render] => :renderer
+
+    def initialize(model, config: nil)
       @model = model
-      @runtime = runtime || Runtime.new
-      @renderer = renderer || Renderer.new(output)
       @config = config || Milktea.config
       @timers = Timers::Group.new
       @reader = TTY::Reader.new(interrupt: :error)
     end
 
     def run
-      @runtime.start
-      @renderer.setup_screen
-      @renderer.render(@model)
+      start
+      setup_screen
+      render(@model)
       setup_timers
       @timers.wait while running?
     ensure
-      @renderer.restore_screen
-    end
-
-    def stop
-      @runtime.stop
-    end
-
-    def running?
-      @runtime.running?
+      restore_screen
     end
 
     private
 
     def process_messages
-      @model = @runtime.tick(@model)
-      @renderer.render(@model) if @runtime.render?
+      @model = tick(@model)
+      render(@model) if render?
     end
 
     def setup_timers
@@ -57,7 +56,7 @@ module Milktea
 
       enqueue_key_message(key)
     rescue TTY::Reader::InputInterrupt
-      @runtime.enqueue(Message::Exit.new)
+      enqueue(Message::Exit.new)
     end
 
     def enqueue_key_message(key)
@@ -68,7 +67,7 @@ module Milktea
         alt: false,
         shift: false
       )
-      @runtime.enqueue(key_message)
+      enqueue(key_message)
     end
   end
 end

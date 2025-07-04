@@ -20,34 +20,30 @@ RSpec.describe Milktea::Program do
   let(:output) { StringIO.new }
   let(:runtime) { spy("runtime", running?: false) }
   let(:renderer) { spy("renderer") }
-  subject(:program) { described_class.new(model, runtime: runtime, renderer: renderer) }
+  let(:config) { instance_double(Milktea::Config, runtime: runtime, renderer: renderer, output: output) }
+  subject(:program) { described_class.new(model, config: config) }
 
   describe "#running?" do
     context "when runtime is not running" do
       let(:runtime) { spy("runtime", running?: false) }
+      let(:config) { instance_double(Milktea::Config, runtime: runtime, renderer: renderer, output: output) }
 
       it { is_expected.not_to be_running }
     end
 
     context "when runtime is running" do
       let(:runtime) { spy("runtime", running?: true) }
+      let(:config) { instance_double(Milktea::Config, runtime: runtime, renderer: renderer, output: output) }
 
       it { is_expected.to be_running }
     end
   end
 
-  describe "default renderer creation" do
-    let(:runtime_for_run) do
-      spy("runtime_for_run",
-          start: nil,
-          running?: false,
-          tick: model,
-          render?: false)
-    end
-    subject(:program_with_output) { described_class.new(model, runtime: runtime_for_run, output: output) }
+  describe "default config creation" do
+    subject(:program_with_default_config) { described_class.new(model) }
 
-    it "creates a default renderer when none provided" do
-      expect { program_with_output.run }.not_to raise_error
+    it "creates program with default config" do
+      expect { program_with_default_config }.not_to raise_error
     end
   end
 

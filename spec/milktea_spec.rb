@@ -61,7 +61,7 @@ RSpec.describe Milktea do
       end
 
       it { expect(config.app_dir).to eq("custom") }
-      it { expect(config.hot_reloading).to be(false) }
+      it { expect(config.hot_reloading?).to be(false) }
     end
 
     context "when called multiple times" do
