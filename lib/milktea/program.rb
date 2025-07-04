@@ -12,7 +12,7 @@ module Milktea
     REFRESH_INTERVAL = 1.0 / FPS
 
     # Delegate config accessors
-    def_delegators :@config, :runtime, :renderer
+    def_delegators :@config, :runtime, :renderer, :reloader
 
     # Delegate to runtime and renderer
     delegate %i[start stop running? tick render? enqueue] => :runtime
@@ -27,6 +27,7 @@ module Milktea
 
     def run
       start
+      setup_hot_reloading
       setup_screen
       render(@model)
       setup_timers
@@ -36,6 +37,11 @@ module Milktea
     end
 
     private
+
+    def setup_hot_reloading
+      reloader.start
+      reloader.hot_reload! if @config.hot_reloading?
+    end
 
     def process_messages
       @model = tick(@model)

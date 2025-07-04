@@ -59,6 +59,9 @@ module Milktea
         stop
       when Message::Batch
         side_effect.messages.each { |msg| enqueue(msg) }
+      when Message::Reload
+        # Hot reload handled automatically by Zeitwerk
+        # No additional action needed
       end
     end
   end

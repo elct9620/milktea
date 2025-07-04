@@ -25,5 +25,8 @@ module Milktea
         super
       end
     end
+
+    # Hot reload message
+    Reload = Data.define
   end
 end

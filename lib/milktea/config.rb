@@ -22,7 +22,7 @@ module Milktea
     end
 
     def reloader
-      @reloader ||= Milktea::Reloader.new
+      @reloader ||= Milktea::Reloader.new(app_path, runtime)
     end
 
     def runtime
