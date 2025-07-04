@@ -9,7 +9,6 @@ RSpec.describe Milktea::Config do
     it { expect(config.app_dir).to eq("app") }
     it { expect(config.output).to eq($stdout) }
     it { expect(config.hot_reloading?).to be(false) }
-    it { expect(config.loader).to be_nil }
     it { expect(config.runtime).to be_a(Milktea::Runtime) }
     it { expect(config.renderer).to be_a(Milktea::Renderer) }
 
@@ -49,20 +48,6 @@ RSpec.describe Milktea::Config do
       before { config.hot_reloading = false }
 
       it { expect(config.hot_reloading?).to be(false) }
-    end
-  end
-
-  describe "#loader" do
-    context "when not explicitly set" do
-      it { expect(config.loader).to be_nil }
-    end
-
-    context "when explicitly set" do
-      let(:custom_loader) { instance_double(Milktea::Loader) }
-
-      before { config.loader = custom_loader }
-
-      it { expect(config.loader).to be(custom_loader) }
     end
   end
 

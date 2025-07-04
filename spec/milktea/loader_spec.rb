@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe Milktea::Loader do
-  subject(:loader) { described_class.new(app_dir, runtime) }
+  subject(:loader) { described_class.new(config) }
 
-  let(:app_dir) { "/path/to/app" }
+  let(:config) { spy("config", app_path: app_path, runtime: runtime, hot_reloading?: false) }
+  let(:app_path) { Pathname.new("/path/to/app") }
   let(:runtime) { spy("runtime") }
 
   describe "#initialize" do
@@ -13,10 +14,24 @@ RSpec.describe Milktea::Loader do
   describe "#start" do
     before do
       allow(loader).to receive(:setup_loader)
-      loader.start
+      allow(loader).to receive(:hot_reload)
     end
 
-    it { expect(loader).to have_received(:setup_loader) }
+    context "when hot_reloading is disabled" do
+      before { loader.start }
+
+      it { expect(loader).to have_received(:setup_loader) }
+      it { expect(loader).not_to have_received(:hot_reload) }
+    end
+
+    context "when hot_reloading is enabled" do
+      let(:config) { spy("config", app_path: app_path, runtime: runtime, hot_reloading?: true) }
+
+      before { loader.start }
+
+      it { expect(loader).to have_received(:setup_loader) }
+      it { expect(loader).to have_received(:hot_reload) }
+    end
   end
 
   describe "#hot_reload" do
@@ -33,7 +48,7 @@ RSpec.describe Milktea::Loader do
         loader.hot_reload
       end
 
-      it { expect(listen_class).to have_received(:to).with(app_dir, only: /\.rb$/) }
+      it { expect(listen_class).to have_received(:to).with(app_path, only: /\.rb$/) }
       it { expect(listener).to have_received(:start) }
     end
 
@@ -84,7 +99,7 @@ RSpec.describe Milktea::Loader do
     end
 
     it { expect(zeitwerk_loader_class).to have_received(:new) }
-    it { expect(zeitwerk_loader).to have_received(:push_dir).with(app_dir) }
+    it { expect(zeitwerk_loader).to have_received(:push_dir).with(app_path) }
     it { expect(zeitwerk_loader).to have_received(:enable_reloading) }
     it { expect(zeitwerk_loader).to have_received(:setup) }
   end

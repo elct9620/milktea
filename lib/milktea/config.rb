@@ -3,14 +3,13 @@
 module Milktea
   # Configuration class for Milktea applications
   class Config
-    attr_accessor :app_dir, :output, :loader
+    attr_accessor :app_dir, :output
     attr_writer :hot_reloading, :runtime, :renderer
 
     def initialize
       @app_dir = "app"
       @output = $stdout
       @hot_reloading = nil # Will be set by lazy evaluation
-      @loader = nil # Optional loader
       @runtime = nil # Will be set by lazy evaluation
       @renderer = nil # Will be set by lazy evaluation
 

@@ -5,15 +5,17 @@ require "zeitwerk"
 module Milktea
   # Auto loading and hot reloading implementation for Milktea applications
   class Loader
-    def initialize(app_dir, runtime)
-      @app_dir = app_dir
-      @runtime = runtime
+    def initialize(config = nil)
+      @config = config || Milktea.config
+      @app_dir = @config.app_path
+      @runtime = @config.runtime
       @loader = nil
       @listener = nil
     end
 
     def start
       setup_loader
+      hot_reload if @config.hot_reloading?
     end
 
     def hot_reload

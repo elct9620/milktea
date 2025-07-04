@@ -40,23 +40,22 @@ puts ""
 puts "Starting demo... (press any key to continue)"
 gets
 
-# Configure Milktea with custom loader for hot reloading
+# Configure Milktea for hot reloading
 config = Milktea.configure do |c|
   # Point to our demo components directory
   c.app_dir = "hot_reload_demo"
 
   # Enable hot reloading explicitly
   c.hot_reloading = true
-
-  # Create custom loader with our app directory and runtime
-  # This enables both autoloading and hot reloading
-  c.loader = Milktea::Loader.new(
-    File.expand_path("hot_reload_demo", __dir__),
-    c.runtime
-  )
 end
 
-# Load our models from the hot_reload_demo directory
+# Create independent loader with config
+# This enables both autoloading and hot reloading
+loader = Milktea::Loader.new(config)
+loader.start # Automatically enables hot_reload if config.hot_reloading?
+
+# Models will be automatically loaded by the Loader
+# No need to manually require them
 require_relative "hot_reload_demo/models/status_model"
 require_relative "hot_reload_demo/models/demo_model"
 

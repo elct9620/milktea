@@ -27,7 +27,6 @@ module Milktea
 
     def run
       start
-      setup_hot_reloading
       setup_screen
       render(@model)
       setup_timers
@@ -37,13 +36,6 @@ module Milktea
     end
 
     private
-
-    def setup_hot_reloading
-      return unless @config.loader
-
-      @config.loader.start
-      @config.loader.hot_reload if @config.hot_reloading?
-    end
 
     def process_messages
       @model = tick(@model)
