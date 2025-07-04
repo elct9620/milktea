@@ -40,7 +40,7 @@ module Milktea
 
     def setup_hot_reloading
       reloader.start
-      reloader.hot_reload! if @config.hot_reloading?
+      reloader.hot_reload if @config.hot_reloading?
     end
 
     def process_messages

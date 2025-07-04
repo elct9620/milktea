@@ -19,7 +19,7 @@ RSpec.describe Milktea::Reloader do
     it { expect(reloader).to have_received(:setup_loader) }
   end
 
-  describe "#hot_reload!" do
+  describe "#hot_reload" do
     let(:listener) { spy("listener") }
     let(:listen_class) { spy("Listen") }
 
@@ -30,7 +30,7 @@ RSpec.describe Milktea::Reloader do
         allow(reloader).to receive(:gem).with("listen")
         allow(reloader).to receive(:require).with("listen")
         allow(listen_class).to receive(:to).and_return(listener)
-        reloader.hot_reload!
+        reloader.hot_reload
       end
 
       it { expect(listen_class).to have_received(:to).with(app_dir, only: /\.rb$/) }
@@ -41,7 +41,7 @@ RSpec.describe Milktea::Reloader do
       before do
         allow(reloader).to receive(:gem).with("listen").and_raise(Gem::LoadError)
         allow(listen_class).to receive(:to).and_return(listener)
-        reloader.hot_reload!
+        reloader.hot_reload
       end
 
       it { expect(listen_class).not_to have_received(:to) }

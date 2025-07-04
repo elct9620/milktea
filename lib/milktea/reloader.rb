@@ -16,7 +16,7 @@ module Milktea
       setup_loader
     end
 
-    def hot_reload!
+    def hot_reload
       gem "listen"
       require "listen"
 
