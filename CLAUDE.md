@@ -55,37 +55,55 @@ This project follows Clean Architecture and Domain-Driven Design (DDD) principle
 
 Follow these conventions when writing RSpec tests:
 
-1. **Use `subject` for test targets**:
+1. **ALWAYS prefer one-line `it { ... }` syntax**:
+   ```ruby
+   # Preferred - Always use this when possible
+   it { expect(model.state[:count]).to eq(0) }
+   it { expect(model.state).to be_frozen }
+   it { is_expected.to be_running }
+   
+   # Avoid - Multi-line blocks should be rare
+   it "has expected state" do
+     expect(model.state[:count]).to eq(0)
+   end
+   ```
+
+2. **Use `subject` to define test targets**:
    ```ruby
    subject(:program) { described_class.new }
    subject(:new_model) { model.with(count: 5) }
+   subject(:custom_model) { test_model_class.new(count: 5) }
    ```
 
-2. **Use `let` for test dependencies and lazy evaluation**:
+3. **Use `let` for test dependencies and lazy evaluation**:
    ```ruby
    let(:output) { StringIO.new }
    let(:new_model) { result.first }
    let(:message) { result.last }
+   let(:original_children) { parent_model.children }
    ```
 
-3. **Use `context` + `before` for shared setup**:
+4. **Use `context` to group related scenarios and enable one-liners**:
    ```ruby
-   context "with increment message" do
-     subject(:result) { model.update(:increment) }
-     
-     it { expect(new_model.state[:count]).to eq(1) }
+   # Good - Use context to set up scenarios for one-line tests
+   context "when merging provided state with default state" do
+     subject(:custom_model) { test_model_class.new(count: 5) }
+
+     it { expect(custom_model.state[:count]).to eq(5) }
    end
-   ```
+   
+   # Good - Group related one-line tests
+   context "when checking child states" do
+     subject(:child_count_model) { parent_model.children[0] }
 
-4. **Prefer one-line syntax for simple expectations**:
-   ```ruby
-   it { expect(output.string).to include("Hello from Milktea!") }
-   it { is_expected.to be_running }
+     it { expect(child_count_model.state[:count]).to eq(5) }
+   end
    ```
 
 5. **Use `is_expected` when testing the subject directly**:
    ```ruby
    it { is_expected.to be_running }  # Preferred
+   it { is_expected.not_to be(model) }
    # vs
    it { expect(subject).to be_running }  # Avoid
    ```
@@ -98,11 +116,11 @@ Follow these conventions when writing RSpec tests:
 
 7. **Each `it` block should have only one expectation**:
    ```ruby
-   # Good
+   # Good - Separate one-line tests
    it { expect(new_model).not_to be(model) }
    it { expect(new_model.state[:count]).to eq(5) }
    
-   # Avoid
+   # Avoid - Multiple expectations in one block
    it "creates new instance with updated state" do
      new_model = model.with(count: 5)
      expect(new_model).not_to be(model)
@@ -110,52 +128,65 @@ Follow these conventions when writing RSpec tests:
    end
    ```
 
-8. **Use `context` to group related test scenarios**:
+8. **Transform multi-line tests into context + one-liners**:
    ```ruby
-   context "when merging with existing state" do
-     let(:model_with_data) { test_model_class.new(count: 1, name: "test") }
-     subject(:merged_model) { model_with_data.with(count: 2) }
-     
-     it { expect(merged_model.state[:count]).to eq(2) }
-     it { expect(merged_model.state[:name]).to eq("test") }
+   # Good - Use context to enable one-liner
+   context "when called on base class" do
+     subject(:base_model) { Milktea::Model.new }
+
+     it { expect { base_model.view }.to raise_error(NotImplementedError) }
+   end
+   
+   # Avoid - Multi-line when one-liner is possible
+   it "raises NotImplementedError for base class" do
+     base_model = Milktea::Model.new
+     expect { base_model.view }.to raise_error(NotImplementedError)
    end
    ```
 
-9. **Use descriptive blocks when one-liners aren't sufficient**:
+9. **Use descriptive blocks ONLY when one-liners are impossible**:
    ```ruby
-   it "is expected to handle complex scenarios" do
-     # Multiple expectations or setup required
+   # Only use this when absolutely necessary (very rare)
+   it "handles complex scenario with multiple setup steps" do
+     # Multiple expectations or complex setup that cannot be simplified
    end
    ```
 
-10. **Never test private instance variables directly**:
+10. **PRIORITY: Transform ANY multi-line test into context + one-liner**:
+    ```ruby
+    # If you find yourself writing this:
+    it "merges provided state with default state" do
+      custom_model = test_model_class.new(count: 5)
+      expect(custom_model.state[:count]).to eq(5)
+    end
+    
+    # Transform it to this:
+    context "when merging provided state with default state" do
+      subject(:custom_model) { test_model_class.new(count: 5) }
+
+      it { expect(custom_model.state[:count]).to eq(5) }
+    end
+    ```
+
+11. **Never test private instance variables directly**:
     ```ruby
     # Bad - Testing implementation details
     it { expect(subject.instance_variable_get(:@output)).to eq($stdout) }
     
-    # Good - Testing public behavior
+    # Good - Testing public behavior with one-liner
     it { expect(output.string).to include("expected content") }
     ```
 
-11. **Focus on observable behavior, not implementation**:
+12. **Focus on observable behavior, not implementation**:
     ```ruby
     # Bad - Checking internal state
     it { expect(program.instance_variable_get(:@renderer)).to be_a(Milktea::Renderer) }
     
-    # Bad - Testing private methods with send()
-    it "delegates rendering to renderer" do
-      program.send(:process_messages)
-      expect(renderer).to have_received(:render).with(model)
-    end
-    
-    # Good - Testing actual public behavior
-    it "delegates to runtime stop" do
-      program.stop
-      expect(runtime).to have_received(:stop)
-    end
+    # Good - Testing actual public behavior with one-liner
+    it { expect(runtime).to have_received(:stop) }
     ```
 
-12. **Prefer `instance_double` over extensive `allow` calls**:
+13. **Prefer `instance_double` over extensive `allow` calls**:
     ```ruby
     # Bad - Multiple allow calls
     let(:runtime) { instance_double(Milktea::Runtime) }
@@ -214,6 +245,21 @@ Follow these conventions when writing RSpec tests:
       expect(stdout_capture.string).to include("Hello!")
     end
     ```
+
+### RSpec Style Summary
+
+**CRITICAL RULE**: Always prefer `it { ... }` one-line syntax. If you find yourself writing a multi-line `it` block, immediately refactor it into a `context` with a `subject` to enable one-line tests.
+
+**The Golden Pattern**:
+```ruby
+context "when [scenario description]" do
+  subject(:target) { SomeClass.new(params) }
+
+  it { expect(target.method).to eq(expected) }
+end
+```
+
+**Remember**: Every multi-line test can and should be transformed into this pattern.
 
 ## Important Notes
 

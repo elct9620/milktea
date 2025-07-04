@@ -31,14 +31,15 @@ RSpec.describe Milktea::Model do
   subject(:model) { test_model_class.new }
 
   describe "#initialize" do
-    it "merges provided state with default state" do
-      custom_model = test_model_class.new(count: 5)
-      expect(custom_model.state[:count]).to eq(5)
-    end
-
     it { expect(model.state).to be_frozen }
 
     it { expect(model.state[:count]).to eq(0) }
+
+    context "when merging provided state with default state" do
+      subject(:custom_model) { test_model_class.new(count: 5) }
+
+      it { expect(custom_model.state[:count]).to eq(5) }
+    end
   end
 
   describe "#state" do
@@ -62,18 +63,20 @@ RSpec.describe Milktea::Model do
   end
 
   describe "#view" do
-    it "raises NotImplementedError for base class" do
-      base_model = Milktea::Model.new
-      expect { base_model.view }.to raise_error(NotImplementedError)
+    context "when called on base class" do
+      subject(:base_model) { Milktea::Model.new }
+
+      it { expect { base_model.view }.to raise_error(NotImplementedError) }
     end
 
     it { expect(model.view).to eq("Count: 0") }
   end
 
   describe "#update" do
-    it "raises NotImplementedError for base class" do
-      base_model = Milktea::Model.new
-      expect { base_model.update(:test) }.to raise_error(NotImplementedError)
+    context "when called on base class" do
+      subject(:base_model) { Milktea::Model.new }
+
+      it { expect { base_model.update(:test) }.to raise_error(NotImplementedError) }
     end
 
     context "with increment message" do
@@ -84,6 +87,175 @@ RSpec.describe Milktea::Model do
       it { expect(new_model.state[:count]).to eq(1) }
       it { expect(message).to be_a(Milktea::Message::None) }
       it { expect { model.update(:increment) }.not_to change(model, :state) }
+    end
+  end
+
+  describe "nested models" do
+    let(:child_model_class) do
+      Class.new(Milktea::Model) do
+        def view
+          "Child Count: #{state[:count]}"
+        end
+
+        def update(_message)
+          [self, Milktea::Message::None.new]
+        end
+
+        private
+
+        def default_state
+          { count: 0 }
+        end
+      end
+    end
+
+    let(:status_model_class) do
+      Class.new(Milktea::Model) do
+        def view
+          "Status: #{state[:message]}"
+        end
+
+        def update(_message)
+          [self, Milktea::Message::None.new]
+        end
+
+        private
+
+        def default_state
+          { message: "Ready" }
+        end
+      end
+    end
+
+    let(:parent_model_class) do
+      child_class = child_model_class
+      status_class = status_model_class
+
+      Class.new(Milktea::Model) do
+        child child_class, ->(state) { { count: state[:count] } }
+        child status_class, ->(state) { { message: state[:status_message] } }
+
+        def view
+          "Parent: #{children_views}"
+        end
+
+        def update(_message)
+          [self, Milktea::Message::None.new]
+        end
+
+        private
+
+        def default_state
+          { count: 5, status_message: "Active" }
+        end
+      end
+    end
+
+    subject(:parent_model) { parent_model_class.new }
+
+    describe ".child" do
+      it { expect(parent_model_class.children.size).to eq(2) }
+
+      context "when examining first child definition" do
+        subject(:definition) { parent_model_class.children.first }
+
+        it { expect(definition[:class]).to eq(child_model_class) }
+        it { expect(definition[:mapper]).to be_a(Proc) }
+      end
+    end
+
+    describe "#children" do
+      it { expect(parent_model.children.size).to eq(2) }
+      it { expect(parent_model.children).to be_frozen }
+
+      context "when checking child state mapping" do
+        subject(:child_count_model) { parent_model.children[0] }
+
+        it { expect(child_count_model.state[:count]).to eq(5) }
+      end
+
+      context "when checking status child" do
+        subject(:status_model) { parent_model.children[1] }
+
+        it { expect(status_model.state[:message]).to eq("Active") }
+      end
+    end
+
+    describe "#children_views" do
+      subject(:combined_views) { parent_model.children_views }
+
+      it { expect(combined_views).to eq("Child Count: 5\nStatus: Active") }
+    end
+
+    describe "#with" do
+      subject(:updated_model) { parent_model.with(count: 10, status_message: "Updated") }
+
+      it { expect(updated_model).not_to be(parent_model) }
+
+      context "when checking updated child states" do
+        subject(:child_count_model) { updated_model.children[0] }
+
+        it { expect(child_count_model.state[:count]).to eq(10) }
+      end
+
+      context "when checking updated status child" do
+        subject(:status_model) { updated_model.children[1] }
+
+        it { expect(status_model.state[:message]).to eq("Updated") }
+      end
+
+      context "when comparing child instances" do
+        let(:original_children) { parent_model.children }
+        let(:new_children) { updated_model.children }
+
+        it { expect(new_children[0]).not_to be(original_children[0]) }
+        it { expect(new_children[1]).not_to be(original_children[1]) }
+      end
+    end
+
+    describe "#view" do
+      subject(:parent_view) { parent_model.view }
+
+      it { expect(parent_view).to include("Child Count: 5") }
+      it { expect(parent_view).to include("Status: Active") }
+    end
+
+    context "with isolated child state" do
+      let(:isolated_parent_class) do
+        child_class = child_model_class
+
+        Class.new(Milktea::Model) do
+          child child_class # No state mapper = isolated state
+
+          def view
+            children_views
+          end
+
+          def update(_message)
+            [self, Milktea::Message::None.new]
+          end
+
+          private
+
+          def default_state
+            { app_state: "running" }
+          end
+        end
+      end
+
+      subject(:isolated_parent) { isolated_parent_class.new }
+
+      context "when no state mapper provided" do
+        subject(:child) { isolated_parent.children[0] }
+
+        it { expect(child.state[:count]).to eq(0) }
+      end
+
+      context "when parent state changes" do
+        subject(:updated_parent) { isolated_parent.with(app_state: "stopped") }
+
+        it { expect(updated_parent.children[0].state[:count]).to eq(0) }
+      end
     end
   end
 end
