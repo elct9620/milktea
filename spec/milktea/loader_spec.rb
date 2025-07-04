@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-RSpec.describe Milktea::Reloader do
-  subject(:reloader) { described_class.new(app_dir, runtime) }
+RSpec.describe Milktea::Loader do
+  subject(:loader) { described_class.new(app_dir, runtime) }
 
   let(:app_dir) { "/path/to/app" }
   let(:runtime) { spy("runtime") }
@@ -12,11 +12,11 @@ RSpec.describe Milktea::Reloader do
 
   describe "#start" do
     before do
-      allow(reloader).to receive(:setup_loader)
-      reloader.start
+      allow(loader).to receive(:setup_loader)
+      loader.start
     end
 
-    it { expect(reloader).to have_received(:setup_loader) }
+    it { expect(loader).to have_received(:setup_loader) }
   end
 
   describe "#hot_reload" do
@@ -27,10 +27,10 @@ RSpec.describe Milktea::Reloader do
 
     context "when Listen is available" do
       before do
-        allow(reloader).to receive(:gem).with("listen")
-        allow(reloader).to receive(:require).with("listen")
+        allow(loader).to receive(:gem).with("listen")
+        allow(loader).to receive(:require).with("listen")
         allow(listen_class).to receive(:to).and_return(listener)
-        reloader.hot_reload
+        loader.hot_reload
       end
 
       it { expect(listen_class).to have_received(:to).with(app_dir, only: /\.rb$/) }
@@ -39,9 +39,9 @@ RSpec.describe Milktea::Reloader do
 
     context "when Listen is not available" do
       before do
-        allow(reloader).to receive(:gem).with("listen").and_raise(Gem::LoadError)
+        allow(loader).to receive(:gem).with("listen").and_raise(Gem::LoadError)
         allow(listen_class).to receive(:to).and_return(listener)
-        reloader.hot_reload
+        loader.hot_reload
       end
 
       it { expect(listen_class).not_to have_received(:to) }
@@ -49,43 +49,43 @@ RSpec.describe Milktea::Reloader do
   end
 
   describe "#reload" do
-    let(:loader) { spy("loader") }
+    let(:zeitwerk_loader) { spy("zeitwerk_loader") }
     let(:zeitwerk_loader_class) { spy("Zeitwerk::Loader") }
 
     before { stub_const("Zeitwerk::Loader", zeitwerk_loader_class) }
 
     context "when loader has been started" do
       before do
-        allow(zeitwerk_loader_class).to receive(:new).and_return(loader)
-        reloader.start
-        reloader.reload
+        allow(zeitwerk_loader_class).to receive(:new).and_return(zeitwerk_loader)
+        loader.start
+        loader.reload
       end
 
-      it { expect(loader).to have_received(:reload) }
+      it { expect(zeitwerk_loader).to have_received(:reload) }
       it { expect(runtime).to have_received(:enqueue).with(instance_of(Milktea::Message::Reload)) }
     end
 
     context "when loader has not been started" do
-      before { reloader.reload }
+      before { loader.reload }
 
-      it { expect(loader).not_to have_received(:reload) }
+      it { expect(zeitwerk_loader).not_to have_received(:reload) }
       it { expect(runtime).not_to have_received(:enqueue) }
     end
   end
 
   describe "#setup_loader" do
-    let(:loader) { spy("loader") }
+    let(:zeitwerk_loader) { spy("zeitwerk_loader") }
     let(:zeitwerk_loader_class) { spy("Zeitwerk::Loader") }
 
     before do
       stub_const("Zeitwerk::Loader", zeitwerk_loader_class)
-      allow(zeitwerk_loader_class).to receive(:new).and_return(loader)
-      reloader.send(:setup_loader)
+      allow(zeitwerk_loader_class).to receive(:new).and_return(zeitwerk_loader)
+      loader.send(:setup_loader)
     end
 
     it { expect(zeitwerk_loader_class).to have_received(:new) }
-    it { expect(loader).to have_received(:push_dir).with(app_dir) }
-    it { expect(loader).to have_received(:enable_reloading) }
-    it { expect(loader).to have_received(:setup) }
+    it { expect(zeitwerk_loader).to have_received(:push_dir).with(app_dir) }
+    it { expect(zeitwerk_loader).to have_received(:enable_reloading) }
+    it { expect(zeitwerk_loader).to have_received(:setup) }
   end
 end

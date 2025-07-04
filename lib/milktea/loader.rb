@@ -3,8 +3,8 @@
 require "zeitwerk"
 
 module Milktea
-  # Hot reloading implementation for Milktea applications
-  class Reloader
+  # Auto loading and hot reloading implementation for Milktea applications
+  class Loader
     def initialize(app_dir, runtime)
       @app_dir = app_dir
       @runtime = runtime
