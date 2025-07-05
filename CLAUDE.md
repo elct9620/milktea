@@ -25,11 +25,31 @@ Milktea is a Terminal User Interface (TUI) framework for Ruby, inspired by the B
 ### Development Tools
 - `bin/console` - Interactive Ruby console with gem loaded
 
-## Hot Reloading Development
+## Application Development
 
-### Setting Up Hot Reloading
+### Using Milktea::Application (Recommended)
 
-Hot reloading requires the Milktea::Loader system and specific configuration for proper operation:
+The simplest way to create Milktea applications is using the Application class:
+
+```ruby
+# Configure Milktea
+Milktea.configure do |c|
+  c.autoload_dirs = ["app/models"]
+  c.hot_reloading = true
+end
+
+# Define Application class
+class MyApp < Milktea::Application
+  root "MainModel"
+end
+
+# Start the application
+MyApp.boot
+```
+
+### Manual Setup (Advanced)
+
+For advanced use cases, you can manually configure the components:
 
 ```ruby
 # Configure with models directory paths
@@ -47,6 +67,8 @@ loader.hot_reload # Manually start hot reloading
 model = DemoModel.new
 program = Milktea::Program.new(model, config: config)
 ```
+
+## Hot Reloading Development
 
 ### Critical Implementation Details
 
@@ -86,6 +108,14 @@ program = Milktea::Program.new(model, config: config)
    - State structure and default values
    - Child model interactions
 
+### Application Class Features
+
+- **Auto-registration**: Inheriting from `Application` automatically sets `Milktea.app`
+- **Root model definition**: Use `root "ModelName"` to specify the entry point model
+- **Simple startup**: Call `MyApp.boot` instead of manual instantiation
+- **Automatic loader setup**: Loader configuration and setup handled automatically
+- **Hot reloading integration**: Automatically starts hot reloading if configured
+
 ### Troubleshooting
 
 - **Models not reloading**: Check `autoload_dirs` points to correct models directories
@@ -97,19 +127,25 @@ program = Milktea::Program.new(model, config: config)
 
 This project follows Clean Architecture and Domain-Driven Design (DDD) principles. The codebase structure:
 
-- `/lib/milktea.rb` - Main module entry point with Zeitwerk autoloading
-- `/lib/milktea/model.rb` - Base Model class for Elm Architecture components
+- `/lib/milktea.rb` - Main module entry point with Zeitwerk autoloading and app registry
+- `/lib/milktea/application.rb` - High-level Application abstraction with auto-registration
+- `/lib/milktea/config.rb` - Configuration system with autoload_dirs array support
+- `/lib/milktea/loader.rb` - Zeitwerk autoloading and hot reloading with multiple directory support
+- `/lib/milktea/model.rb` - Base Model class for Elm Architecture components with child model DSL
 - `/lib/milktea/runtime.rb` - Message processing and execution state management
-- `/lib/milktea/program.rb` - Main TUI program with event loop
+- `/lib/milktea/program.rb` - Main TUI program with event loop and dependency injection
 - `/lib/milktea/message.rb` - Message definitions for events
 - Uses TTY gems for terminal interaction (tty-box, tty-cursor, tty-reader, tty-screen)
 - Event handling through the `timers` gem
 
 ### Core Components
 
+- **Application**: High-level abstraction that encapsulates Loader and Program setup for simplified usage
 - **Model**: Base class implementing Elm Architecture with immutable state
-- **Runtime**: Manages message queue and execution state with dependency injection support
+- **Runtime**: Manages message queue and execution state with dependency injection support  
 - **Program**: Handles terminal setup, rendering, and main event loop
+- **Loader**: Manages Zeitwerk autoloading and hot reloading with Listen gem integration
+- **Config**: Configuration system supporting multiple autoload directories and hot reloading settings
 - **Message**: Event system using Ruby's Data.define for immutable messages
 
 ## Testing Approach
@@ -190,18 +226,18 @@ Follow these conventions when writing RSpec tests:
    context "when configuring with block" do
      before do
        described_class.configure do |config|
-         config.app_dir = "custom"
+         config.autoload_dirs = ["custom"]
          config.hot_reloading = false
        end
      end
 
-     it { expect(config.app_dir).to eq("custom") }
+     it { expect(config.autoload_dirs).to eq(["custom"]) }
      it { expect(config.hot_reloading).to be(false) }
    end
    
    # Avoid - Variable assignments should use let/subject
    before do
-     @config = described_class.configure { |c| c.app_dir = "custom" }
+     @config = described_class.configure { |c| c.autoload_dirs = ["custom"] }
    end
    ```
 
@@ -382,12 +418,12 @@ Follow these conventions when writing RSpec tests:
       context "when configuring with block" do
         before do
           described_class.configure do |config|
-            config.app_dir = "custom"
+            config.autoload_dirs = ["custom"]
             config.hot_reloading = false
           end
         end
         
-        it { expect(config.app_dir).to eq("custom") }
+        it { expect(config.autoload_dirs).to eq(["custom"]) }
         it { expect(config.hot_reloading).to be(false) }
       end
     end
@@ -416,6 +452,8 @@ end
 - Currently in early development (v0.1.0) with core architecture implemented
 - Runtime-based architecture allows dependency injection for testing and customization
 - Program uses dependency injection pattern: `Program.new(model, runtime: custom_runtime)`
+- Application auto-registers itself when inherited: `class MyApp < Milktea::Application` sets `Milktea.app = MyApp`
+- Thread-safe app registry using mutex for concurrent access
 
 ## Repository Management
 
@@ -424,3 +462,4 @@ end
 ## Development Preferences
 
 - Prefer using `return ... if` style instead of `if ... else` for early returns or value determination
+- When using `return .. if`, prioritize returning error conditions first, use `unless` when necessary
