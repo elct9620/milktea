@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "tty-screen"
+
 module Milktea
   # Base model class for creating TUI components following the Elm Architecture
   class Model
@@ -56,6 +58,24 @@ module Milktea
     # @return [String] Combined views of all children
     def children_views
       @children.map(&:view).join("\n")
+    end
+
+    # Get the current screen width
+    # @return [Integer] Screen width in characters
+    def screen_width
+      TTY::Screen.width
+    end
+
+    # Get the current screen height
+    # @return [Integer] Screen height in characters
+    def screen_height
+      TTY::Screen.height
+    end
+
+    # Get the current screen size
+    # @return [Array<Integer>] [width, height] in characters
+    def screen_size
+      TTY::Screen.size
     end
 
     private

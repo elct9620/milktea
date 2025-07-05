@@ -258,4 +258,24 @@ RSpec.describe Milktea::Model do
       end
     end
   end
+
+  describe "screen methods" do
+    before do
+      allow(TTY::Screen).to receive(:width).and_return(80)
+      allow(TTY::Screen).to receive(:height).and_return(24)
+      allow(TTY::Screen).to receive(:size).and_return([80, 24])
+    end
+
+    describe "#screen_width" do
+      it { expect(model.screen_width).to eq(80) }
+    end
+
+    describe "#screen_height" do
+      it { expect(model.screen_height).to eq(24) }
+    end
+
+    describe "#screen_size" do
+      it { expect(model.screen_size).to eq([80, 24]) }
+    end
+  end
 end
