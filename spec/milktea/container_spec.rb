@@ -181,4 +181,130 @@ RSpec.describe Milktea::Container do
     it { expect(container.view).to include("Model: header") }
     it { expect(container.view).to include("Model: footer") }
   end
+
+  describe "flex direction" do
+    describe ".flex_direction" do
+      context "with default direction" do
+        it { expect(container_class.flex_direction).to eq(:column) }
+      end
+
+      context "with explicit column direction" do
+        let(:column_class) do
+          Class.new(described_class) do
+            direction :column
+          end
+        end
+
+        it { expect(column_class.flex_direction).to eq(:column) }
+      end
+
+      context "with row direction" do
+        let(:row_class) do
+          Class.new(described_class) do
+            direction :row
+          end
+        end
+
+        it { expect(row_class.flex_direction).to eq(:row) }
+      end
+    end
+
+    describe "row direction layout" do
+      let(:row_container_class) do
+        child_class = test_model_class
+
+        Class.new(described_class) do
+          direction :row
+          child child_class, ->(state) { { name: state[:left] } }, flex: 1
+          child child_class, ->(state) { { name: state[:right] } }, flex: 2
+
+          def view
+            "Row Container: #{children_views}"
+          end
+
+          def update(_message)
+            [self, Milktea::Message::None.new]
+          end
+
+          private
+
+          def default_state
+            { left: "left", right: "right" }
+          end
+        end
+      end
+
+      subject(:row_container) { row_container_class.new(width: 120, height: 60, left: "left", right: "right") }
+
+      describe "children layout" do
+        it { expect(row_container.children.size).to eq(2) }
+
+        context "when checking first child layout" do
+          subject(:first_child) { row_container.children[0] }
+
+          it { expect(first_child.bounds.width).to eq(40) }
+          it { expect(first_child.bounds.height).to eq(60) }
+          it { expect(first_child.bounds.x).to eq(0) }
+          it { expect(first_child.bounds.y).to eq(0) }
+        end
+
+        context "when checking second child layout" do
+          subject(:second_child) { row_container.children[1] }
+
+          it { expect(second_child.bounds.width).to eq(80) }
+          it { expect(second_child.bounds.height).to eq(60) }
+          it { expect(second_child.bounds.x).to eq(40) }
+          it { expect(second_child.bounds.y).to eq(0) }
+        end
+
+        context "when checking child state mapping" do
+          subject(:first_child) { row_container.children[0] }
+
+          it { expect(first_child.state[:name]).to eq("left") }
+        end
+      end
+
+      describe "three column row layout" do
+        let(:three_row_class) do
+          child_class = test_model_class
+
+          Class.new(described_class) do
+            direction :row
+            child child_class, ->(_state) { { name: "child" } }, flex: 1
+            child child_class, ->(_state) { { name: "child" } }, flex: 2
+            child child_class, ->(_state) { { name: "child" } }, flex: 1
+
+            def view
+              children_views
+            end
+
+            def update(_message)
+              [self, Milktea::Message::None.new]
+            end
+          end
+        end
+
+        subject(:three_row_container) { three_row_class.new(width: 120, height: 60) }
+
+        context "when checking equal flex distribution" do
+          subject(:first_child) { three_row_container.children[0] }
+
+          it { expect(first_child.bounds.width).to eq(30) }
+        end
+
+        context "when checking double flex distribution" do
+          subject(:second_child) { three_row_container.children[1] }
+
+          it { expect(second_child.bounds.width).to eq(60) }
+        end
+
+        context "when checking third child positioning" do
+          subject(:third_child) { three_row_container.children[2] }
+
+          it { expect(third_child.bounds.width).to eq(30) }
+          it { expect(third_child.bounds.x).to eq(90) }
+        end
+      end
+    end
+  end
 end

@@ -18,6 +18,18 @@ module Milktea
           flex: flex
         }
       end
+
+      # Set the flex direction for the container
+      # @param dir [Symbol] The direction (:column or :row)
+      def direction(dir)
+        @direction = dir
+      end
+
+      # Get the flex direction (defaults to :column)
+      # @return [Symbol] The flex direction
+      def flex_direction
+        @direction || :column
+      end
     end
 
     def initialize(state = {})
@@ -45,13 +57,34 @@ module Milktea
     end
 
     def layout_children(parent_state)
+      case self.class.flex_direction
+      when :row
+        layout_children_row(parent_state)
+      else
+        layout_children_column(parent_state)
+      end
+    end
+
+    def layout_children_column(parent_state)
       total_flex = calculate_total_flex
       current_y = bounds.y
 
       self.class.children.map do |definition|
         child_height = calculate_child_height(definition[:flex], total_flex)
-        child_state = build_child_state(definition, parent_state, current_y, child_height)
+        child_state = build_child_state_column(definition, parent_state, current_y, child_height)
         current_y += child_height
+        definition[:class].new(child_state)
+      end.freeze
+    end
+
+    def layout_children_row(parent_state)
+      total_flex = calculate_total_flex
+      current_x = bounds.x
+
+      self.class.children.map do |definition|
+        child_width = calculate_child_width(definition[:flex], total_flex)
+        child_state = build_child_state_row(definition, parent_state, current_x, child_width)
+        current_x += child_width
         definition[:class].new(child_state)
       end.freeze
     end
@@ -64,12 +97,25 @@ module Milktea
       (bounds.height * flex) / total_flex
     end
 
-    def build_child_state(definition, parent_state, pos_y, child_height)
+    def calculate_child_width(flex, total_flex)
+      (bounds.width * flex) / total_flex
+    end
+
+    def build_child_state_column(definition, parent_state, pos_y, child_height)
       definition[:mapper].call(parent_state).merge(
         width: bounds.width,
         height: child_height,
         x: bounds.x,
         y: pos_y
+      )
+    end
+
+    def build_child_state_row(definition, parent_state, pos_x, child_width)
+      definition[:mapper].call(parent_state).merge(
+        width: child_width,
+        height: bounds.height,
+        x: pos_x,
+        y: bounds.y
       )
     end
   end
