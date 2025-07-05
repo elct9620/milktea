@@ -10,21 +10,66 @@ Milktea is a Ruby Terminal User Interface (TUI) framework inspired by The Elm Ar
 
 Milktea implements the classic Elm Architecture pattern with three core concepts:
 
+```mermaid
+graph TB
+    User[User Input] --> Message[Message]
+    Message --> Update[Model#update]
+    Update --> NewModel[New Model Instance]
+    Update --> SideEffect[Side Effect]
+    
+    NewModel --> View[Model#view]
+    View --> Terminal[Terminal Output]
+    Terminal --> User
+    
+    SideEffect --> Runtime[Runtime]
+    Runtime --> Message
+    
+    subgraph "Elm Architecture Cycle"
+        Message
+        Update
+        NewModel
+        View
+    end
+    
+    subgraph "Side Effects"
+        SideEffect
+        Runtime
+    end
+    
+    style Message fill:#e1f5fe
+    style Update fill:#fff3e0
+    style NewModel fill:#e8f5e8
+    style View fill:#f3e5f5
+    style SideEffect fill:#fff8e1
+```
+
 1. **Model**: Immutable state container with view rendering and update logic
 2. **Update**: Pure functions that process messages and return new state
 3. **View**: Functions that render the current state to terminal output
 
 ### Component Tree
 
-```
-Application
-├── Program (Event Loop)
-├── Runtime (Message Processing)
-├── Renderer (Terminal Output)
-└── Model Tree
-    ├── Model (Base Component)
-    ├── Container (Layout Component)
-    └── Dynamic Children (Symbol Resolution)
+```mermaid
+graph TB
+    App[Application] --> Program[Program<br/>Event Loop]
+    App --> Runtime[Runtime<br/>Message Processing]
+    App --> Renderer[Renderer<br/>Terminal Output]
+    App --> ModelTree[Model Tree]
+    
+    ModelTree --> Model[Model<br/>Base Component]
+    ModelTree --> Container[Container<br/>Layout Component]
+    ModelTree --> Dynamic[Dynamic Children<br/>Symbol Resolution]
+    
+    Program --> |delegates| Runtime
+    Program --> |delegates| Renderer
+    Runtime --> |tick| Model
+    Model --> |view| Renderer
+    
+    style App fill:#e1f5fe
+    style Program fill:#f3e5f5
+    style Runtime fill:#fff3e0
+    style Renderer fill:#e8f5e8
+    style ModelTree fill:#fce4ec
 ```
 
 ## Core Components
@@ -292,6 +337,37 @@ end
 
 ### Message Processing Cycle
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant Program
+    participant Runtime
+    participant Model
+    participant Renderer
+    participant Terminal
+
+    User->>Program: Keyboard Input
+    Program->>Program: Convert to Message
+    Program->>Runtime: enqueue(message)
+    
+    loop Every 16.67ms (60 FPS)
+        Program->>Runtime: tick(model)
+        Runtime->>Runtime: Process message queue
+        Runtime->>Model: update(message)
+        Model->>Model: Create new state
+        Model-->>Runtime: [new_model, side_effect]
+        Runtime->>Runtime: Execute side effects
+        Runtime-->>Program: updated_model
+        
+        alt If render needed
+            Program->>Model: view()
+            Model-->>Program: rendered_content
+            Program->>Renderer: render(model)
+            Renderer->>Terminal: Display output
+        end
+    end
+```
+
 1. **Input Capture**: Program reads keyboard input via TTY-Reader
 2. **Message Creation**: Input converted to structured Message objects
 3. **Queue Processing**: Runtime processes message queue
@@ -308,6 +384,35 @@ end
 
 ### Component Composition
 
+```mermaid
+graph TB
+    Parent[Parent Model] --> Child1[Child Model 1]
+    Parent --> Child2[Child Model 2]
+    Parent --> ChildN[Child Model N]
+    
+    Parent --> |"child :dynamic_child"| DynamicMethod[dynamic_child method]
+    DynamicMethod --> |returns Class| DynamicChild[Dynamic Child Model]
+    
+    subgraph "State Flow"
+        ParentState[Parent State] --> |mapper lambda| ChildState1[Child 1 State]
+        ParentState --> |mapper lambda| ChildState2[Child 2 State]
+        ParentState --> |mapper lambda| ChildStateN[Child N State]
+    end
+    
+    subgraph "View Composition"
+        Child1 --> |view| View1[Child 1 View]
+        Child2 --> |view| View2[Child 2 View]
+        ChildN --> |view| ViewN[Child N View]
+        View1 --> |join| ParentView[Parent View]
+        View2 --> |join| ParentView
+        ViewN --> |join| ParentView
+    end
+    
+    style Parent fill:#e1f5fe
+    style DynamicMethod fill:#fff3e0
+    style ParentView fill:#e8f5e8
+```
+
 - **Declarative DSL**: Components defined using `child` class method
 - **Dynamic Resolution**: Symbol-based children resolved at runtime
 - **Bounds Propagation**: Container layout automatically calculates child bounds
@@ -316,6 +421,33 @@ end
 ## Dynamic Child Resolution
 
 The framework supports runtime component selection through Symbol-based definitions:
+
+```mermaid
+flowchart TB
+    Child["`child :current_view`"] --> Resolve[resolve_child]
+    Resolve --> |Symbol?| CheckSymbol{Is Symbol?}
+    CheckSymbol --> |Yes| CallMethod["`send(:current_view)`"]
+    CheckSymbol --> |No| CheckClass[Check if Class]
+    
+    CallMethod --> |Returns Class| CheckClass
+    CallMethod --> |NoMethodError| ErrorMethod[ArgumentError:<br/>Method not found]
+    
+    CheckClass --> |Valid Model Class| CreateInstance["`Class.new(state)`"]
+    CheckClass --> |Invalid| ErrorType[ArgumentError:<br/>Not a Model class]
+    
+    CreateInstance --> ModelInstance[Model Instance]
+    
+    subgraph "Example Flow"
+        State["`state[:mode] = :edit`"] --> Method[current_view method]
+        Method --> |returns| EditViewClass[EditView]
+        EditViewClass --> Instance[EditView.new]
+    end
+    
+    style Child fill:#e1f5fe
+    style ErrorMethod fill:#ffebee
+    style ErrorType fill:#ffebee
+    style ModelInstance fill:#e8f5e8
+```
 
 ```ruby
 class DynamicApp < Milktea::Model
@@ -355,6 +487,33 @@ end
 
 ### Bounds Management
 
+```mermaid
+graph TB
+    Container[Container<br/>80x24 @(0,0)] --> FlexCalc[Flex Calculator]
+    FlexCalc --> |flex: 1| Child1[Child 1<br/>80x4.8 @(0,0)]
+    FlexCalc --> |flex: 3| Child2[Child 2<br/>80x14.4 @(0,4.8)]
+    FlexCalc --> |flex: 1| Child3[Child 3<br/>80x4.8 @(0,19.2)]
+    
+    subgraph "Column Layout (direction: :column)"
+        Container
+        Child1
+        Child2
+        Child3
+    end
+    
+    subgraph "Row Layout (direction: :row)"
+        ContainerRow[Container<br/>80x24 @(0,0)] --> FlexCalcRow[Flex Calculator]
+        FlexCalcRow --> |flex: 1| ChildR1[Child 1<br/>16x24 @(0,0)]
+        FlexCalcRow --> |flex: 3| ChildR2[Child 2<br/>48x24 @(16,0)]
+        FlexCalcRow --> |flex: 1| ChildR3[Child 3<br/>16x24 @(64,0)]
+    end
+    
+    style Container fill:#e1f5fe
+    style ContainerRow fill:#e1f5fe
+    style FlexCalc fill:#fff3e0
+    style FlexCalcRow fill:#fff3e0
+```
+
 - **Automatic Calculation**: Parent containers calculate child bounds
 - **Proportional Sizing**: Flex ratios determine space distribution
 - **Coordinate Propagation**: X/Y positions calculated relative to parent
@@ -363,6 +522,27 @@ end
 ## Development Features
 
 ### Hot Reloading
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant File as File System
+    participant Listen as Listen Gem
+    participant Zeitwerk as Zeitwerk
+    participant Runtime as Runtime
+    participant Model as Model
+
+    Dev->>File: Edit Ruby file
+    File->>Listen: File change detected
+    Listen->>Zeitwerk: Trigger reload
+    Zeitwerk->>Zeitwerk: Reload class definitions
+    Zeitwerk->>Runtime: Send Reload message
+    Runtime->>Model: Process reload
+    Model->>Model: Rebuild with fresh classes<br/>(Kernel.const_get)
+    Model->>Runtime: Continue with updated model
+    
+    Note over Dev,Model: State preserved during reload
+```
 
 When enabled in development:
 1. Listen gem watches Ruby files for changes
