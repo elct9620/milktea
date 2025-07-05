@@ -97,5 +97,16 @@ RSpec.describe Milktea::Runtime do
 
       it { expect(runtime).not_to be_render }
     end
+
+    context "with Resize message" do
+      before do
+        allow(TTY::Screen).to receive(:width).and_return(80)
+        allow(TTY::Screen).to receive(:height).and_return(24)
+        runtime.enqueue(Milktea::Message::Resize.new)
+        runtime.tick(model)
+      end
+
+      it { expect(runtime).to be_render }
+    end
   end
 end

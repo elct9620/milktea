@@ -68,4 +68,36 @@ RSpec.describe Milktea::Program do
       expect(runtime).to have_received(:stop)
     end
   end
+
+  describe "resize event integration" do
+    let(:runtime) { spy("runtime", running?: false, tick: model, render?: false) }
+    let(:renderer) { spy("renderer", resize?: false) }
+
+    describe "#check_resize" do
+      context "when renderer detects resize" do
+        let(:renderer) { spy("renderer", resize?: true) }
+
+        it "enqueues resize message" do
+          program.send(:check_resize)
+          expect(runtime).to have_received(:enqueue).with(instance_of(Milktea::Message::Resize))
+        end
+      end
+
+      context "when renderer doesn't detect resize" do
+        let(:renderer) { spy("renderer", resize?: false) }
+
+        it "doesn't enqueue resize message" do
+          program.send(:check_resize)
+          expect(runtime).not_to have_received(:enqueue)
+        end
+      end
+    end
+
+    describe "#process_messages" do
+      it "checks for resize events" do
+        program.send(:process_messages)
+        expect(renderer).to have_received(:resize?)
+      end
+    end
+  end
 end

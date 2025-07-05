@@ -28,5 +28,12 @@ module Milktea
 
     # Hot reload message
     Reload = Data.define
+
+    # Terminal resize message
+    Resize = Data.define(:width, :height) do
+      def initialize(width: TTY::Screen.width, height: TTY::Screen.height)
+        super
+      end
+    end
   end
 end

@@ -62,6 +62,9 @@ module Milktea
       when Message::Reload
         # Hot reload handled automatically by Zeitwerk
         # No additional action needed
+      when Message::Resize
+        # Terminal resize detected
+        # No additional action needed at this level
       end
     end
   end

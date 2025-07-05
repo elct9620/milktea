@@ -23,6 +23,10 @@ RSpec.describe Milktea::Renderer do
     context "with default output" do
       subject(:renderer) { described_class.new }
 
+      before do
+        allow(TTY::Screen).to receive(:size).and_return([80, 24])
+      end
+
       it "renders to stdout by default" do
         expect { renderer.render(model) }.to output.to_stdout
       end
@@ -31,7 +35,10 @@ RSpec.describe Milktea::Renderer do
     context "with custom output" do
       subject(:renderer) { described_class.new(custom_output) }
 
-      before { renderer.render(model) }
+      before do
+        allow(TTY::Screen).to receive(:size).and_return([80, 24])
+        renderer.render(model)
+      end
 
       it { expect(custom_output.string).to include("Hello from Renderer!") }
     end
@@ -40,7 +47,10 @@ RSpec.describe Milktea::Renderer do
   describe "#render" do
     subject(:renderer) { described_class.new(custom_output) }
 
-    before { renderer.render(model) }
+    before do
+      allow(TTY::Screen).to receive(:size).and_return([80, 24])
+      renderer.render(model)
+    end
 
     it { expect(custom_output.string).to include("Hello from Renderer!") }
   end
@@ -48,7 +58,10 @@ RSpec.describe Milktea::Renderer do
   describe "#setup_screen" do
     subject(:renderer) { described_class.new(custom_output) }
 
-    before { renderer.setup_screen }
+    before do
+      allow(TTY::Screen).to receive(:size).and_return([80, 24])
+      renderer.setup_screen
+    end
 
     it { expect(custom_output.string).not_to be_empty }
   end
@@ -56,8 +69,40 @@ RSpec.describe Milktea::Renderer do
   describe "#restore_screen" do
     subject(:renderer) { described_class.new(custom_output) }
 
-    before { renderer.restore_screen }
+    before do
+      allow(TTY::Screen).to receive(:size).and_return([80, 24])
+      renderer.restore_screen
+    end
 
     it { expect(custom_output.string).not_to be_empty }
+  end
+
+  describe "#resize?" do
+    subject(:renderer) { described_class.new(custom_output) }
+
+    before do
+      allow(TTY::Screen).to receive(:size).and_return([80, 24])
+    end
+
+    context "when screen size hasn't changed" do
+      it { expect(renderer.resize?).to be(false) }
+    end
+
+    context "when screen size has changed" do
+      before do
+        allow(TTY::Screen).to receive(:size).and_return([80, 24], [100, 30])
+      end
+
+      it { expect(renderer.resize?).to be(true) }
+    end
+
+    context "when checking resize multiple times after size change" do
+      before do
+        allow(TTY::Screen).to receive(:size).and_return([80, 24], [100, 30], [100, 30])
+        renderer.resize? # First call detects change
+      end
+
+      it { expect(renderer.resize?).to be(false) }
+    end
   end
 end
