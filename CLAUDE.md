@@ -116,6 +116,49 @@ program = Milktea::Program.new(model, config: config)
 - **Automatic loader setup**: Loader configuration and setup handled automatically
 - **Hot reloading integration**: Automatically starts hot reloading if configured
 
+## Dynamic Child Resolution
+
+### Symbol-Based Child Definitions
+
+All Model classes support dynamic child resolution using Symbols that reference methods returning Class objects:
+
+```ruby
+class DynamicModel < Milktea::Model
+  child :dynamic_child  # References dynamic_child method
+  child SomeClass       # Traditional class reference
+  
+  def dynamic_child
+    state[:use_special] ? SpecialModel : RegularModel
+  end
+end
+```
+
+### Container Dynamic Layouts
+
+Containers can dynamically switch between layout types while preserving bounds:
+
+```ruby
+class LayoutContainer < Milktea::Container
+  direction :column
+  child :status_bar, flex: 1
+  child :dynamic_layout, flex: 5
+  
+  def status_bar
+    StatusBarModel
+  end
+  
+  def dynamic_layout
+    state[:show_column] ? ColumnLayoutModel : RowLayoutModel
+  end
+end
+```
+
+### Error Handling
+
+- **NoMethodError**: Thrown when Symbol references non-existent method
+- **ArgumentError**: Thrown when method returns non-Model class
+- Clear error messages distinguish between missing methods and invalid types
+
 ### Troubleshooting
 
 - **Models not reloading**: Check `autoload_dirs` points to correct models directories
@@ -131,7 +174,7 @@ This project follows Clean Architecture and Domain-Driven Design (DDD) principle
 - `/lib/milktea/application.rb` - High-level Application abstraction with auto-registration
 - `/lib/milktea/config.rb` - Configuration system with autoload_dirs array support
 - `/lib/milktea/loader.rb` - Zeitwerk autoloading and hot reloading with multiple directory support
-- `/lib/milktea/model.rb` - Base Model class for Elm Architecture components with child model DSL
+- `/lib/milktea/model.rb` - Base Model class for Elm Architecture components with child model DSL and dynamic child resolution
 - `/lib/milktea/runtime.rb` - Message processing and execution state management
 - `/lib/milktea/program.rb` - Main TUI program with event loop and dependency injection
 - `/lib/milktea/message.rb` - Message definitions for events
@@ -141,7 +184,7 @@ This project follows Clean Architecture and Domain-Driven Design (DDD) principle
 ### Core Components
 
 - **Application**: High-level abstraction that encapsulates Loader and Program setup for simplified usage
-- **Model**: Base class implementing Elm Architecture with immutable state
+- **Model**: Base class implementing Elm Architecture with immutable state and dynamic child resolution
 - **Runtime**: Manages message queue and execution state with dependency injection support  
 - **Program**: Handles terminal setup, rendering, and main event loop
 - **Loader**: Manages Zeitwerk autoloading and hot reloading with Listen gem integration
@@ -444,6 +487,34 @@ end
 
 **Remember**: Every multi-line test can and should be transformed into this pattern.
 
+## Container Layout System
+
+### Flexbox-Style Layout
+
+Container provides CSS-like flexbox layout for terminal interfaces:
+
+```ruby
+class MyContainer < Milktea::Container
+  direction :row  # or :column (default)
+  child HeaderModel, flex: 1
+  child ContentModel, flex: 3
+  child FooterModel, flex: 1
+end
+```
+
+### Bounds Management
+
+- Containers automatically calculate and propagate bounds (width, height, x, y)
+- Child components receive properly sized layout areas
+- Supports nested containers with accurate bounds calculation
+- Dynamic components maintain proper bounds through Symbol resolution
+
+### Default Container Behavior
+
+- Container automatically displays `children_views` (no need for manual `view` method)
+- Subclasses can override `view` for custom display logic
+- Layout direction defaults to `:column` if not specified
+
 ## Important Notes
 
 - Ruby version requirement: >= 3.1.0
@@ -454,6 +525,7 @@ end
 - Program uses dependency injection pattern: `Program.new(model, runtime: custom_runtime)`
 - Application auto-registers itself when inherited: `class MyApp < Milktea::Application` sets `Milktea.app = MyApp`
 - Thread-safe app registry using mutex for concurrent access
+- Dynamic child resolution available framework-wide through Symbol-based definitions
 
 ## Repository Management
 

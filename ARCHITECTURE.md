@@ -35,10 +35,10 @@ graph TB
     NewModel --> View[Model#view]
     View --> Render[Terminal Output]
     Render --> User
-    
+
     Update --> SideEffect[Side Effects]
     SideEffect --> Message
-    
+
     style Message fill:#e1f5fe
     style Update fill:#fff3e0
     style View fill:#f3e5f5
@@ -52,24 +52,24 @@ graph TB
     AppModel[App Model] --> CounterModel[Counter Model]
     AppModel --> TodoModel[Todo Model]
     AppModel --> StatusModel[Status Model]
-    
+
     CounterModel --> ButtonModel1[Button Model]
     CounterModel --> LabelModel[Label Model]
-    
+
     TodoModel --> TodoItem1[Todo Item 1]
     TodoModel --> TodoItem2[Todo Item 2]
     TodoModel --> TodoItem3[Todo Item 3]
-    
+
     subgraph "State Management"
         AppModel
     end
-    
+
     subgraph "UI Components"
         CounterModel
         TodoModel
         StatusModel
     end
-    
+
     subgraph "Leaf Components"
         ButtonModel1
         LabelModel
@@ -88,7 +88,7 @@ sequenceDiagram
     participant Model
     participant Child
     participant Terminal
-    
+
     User->>Program: Keyboard Input
     Program->>Program: Map to Message
     Program->>Model: update(message)
@@ -112,19 +112,19 @@ graph TB
     ClassUpdate --> StatePreservation[Preserve Current State]
     StatePreservation --> ModelRecreation[Recreate Model Instances]
     ModelRecreation --> ContinueExecution[Continue Execution]
-    
+
     subgraph "Development Mode"
         FileWatcher
         CodeReload
         ClassUpdate
     end
-    
+
     subgraph "State Management"
         StatePreservation
         ModelRecreation
         ContinueExecution
     end
-    
+
     style FileWatcher fill:#e3f2fd
     style StatePreservation fill:#fff8e1
     style ModelRecreation fill:#f1f8e9
@@ -132,61 +132,146 @@ graph TB
 
 ## Core Implementation
 
-### Model Base Class
+### Model Base Class with Dynamic Resolution
 
 ```ruby
 module Milktea
   class Model
     attr_reader :state, :children
-    
+
     class << self
-      def child(child_class, state_mapper = nil)
-        @child_definitions ||= []
-        @child_definitions << {
-          class: child_class,
-          state_mapper: state_mapper || ->(state) { {} }
+      def child(klass, mapper = nil)
+        @children ||= []
+        @children << {
+          class: klass,           # Can be Class or Symbol
+          mapper: mapper || ->(_state) { {} }
         }
       end
-      
-      def child_definitions
-        @child_definitions ||= []
+
+      def children
+        @children ||= []
       end
     end
-    
+
     def initialize(state = {})
       @state = default_state.merge(state).freeze
       @children = build_children(@state)
     end
-    
+
     def view
       raise NotImplementedError, "#{self.class} must implement #view"
     end
-    
+
     def update(message)
       raise NotImplementedError, "#{self.class} must implement #update"
     end
-    
+
     def with(new_state = {})
       merged_state = @state.merge(new_state)
+      return Kernel.const_get(self.class.name).new(merged_state) if self.class.name
       self.class.new(merged_state)
     end
-    
+
     def children_views
-      @children.map(&:view).join("\n")
+      @children.map(&:view).join
     end
-    
+
     private
-    
+
     def build_children(parent_state)
-      self.class.child_definitions.map do |definition|
-        child_class = definition[:class]
-        child_state = definition[:state_mapper].call(parent_state)
-        child_class.new(child_state)
+      self.class.children.map do |definition|
+        state = definition[:mapper].call(parent_state)
+        resolve_child(definition[:class], state)
       end.freeze
     end
-    
+
+    # Dynamic child resolution - Symbol to Method to Class
+    def resolve_child(klass, state)
+      klass = send(klass) if klass.is_a?(Symbol)
+      raise ArgumentError, "Child must be a Model class, got #{klass.class}" unless klass.is_a?(Class) && klass <= Model
+      klass.new(state)
+    rescue NoMethodError
+      raise ArgumentError, "Method #{klass} not found for dynamic child resolution"
+    end
+
     def default_state
       {}
+    end
+  end
+end
+```
+
+### Container Layout System
+
+```ruby
+module Milktea
+  class Container < Model
+    attr_reader :bounds
+
+    class << self
+      def child(klass, mapper = nil, flex: 1)
+        @children ||= []
+        @children << {
+          class: klass,
+          mapper: mapper || ->(_state) { {} },
+          flex: flex
+        }
+      end
+
+      def direction(dir)
+        @direction = dir
+      end
+
+      def flex_direction
+        @direction || :column
+      end
+    end
+
+    def initialize(state = {})
+      @bounds = extract_bounds(state)
+      super(state.except(:width, :height, :x, :y))
+    end
+
+    def view = children_views
+
+    private
+
+    def build_children(parent_state)
+      return [].freeze if self.class.children.empty?
+      layout_children(parent_state)
+    end
+
+    def layout_children(parent_state)
+      case self.class.flex_direction
+      when :row
+        layout_children_row(parent_state)
+      else
+        layout_children_column(parent_state)
+      end
+    end
+
+    def layout_children_column(parent_state)
+      total_flex = calculate_total_flex
+      current_y = bounds.y
+
+      self.class.children.map do |definition|
+        child_height = calculate_child_height(definition[:flex], total_flex)
+        child_state = build_child_state_column(definition, parent_state, current_y, child_height)
+        current_y += child_height
+        resolve_child(definition[:class], child_state)
+      end.freeze
+    end
+
+    def layout_children_row(parent_state)
+      total_flex = calculate_total_flex
+      current_x = bounds.x
+
+      self.class.children.map do |definition|
+        child_width = calculate_child_width(definition[:flex], total_flex)
+        child_state = build_child_state_row(definition, parent_state, current_x, child_width)
+        current_x += child_width
+        resolve_child(definition[:class], child_state)
+      end.freeze
     end
   end
 end
@@ -202,18 +287,18 @@ module Milktea
     Quit = Data.define
     Tick = Data.define
     ReloadDetected = Data.define
-    
+
     # Input messages
     KeyPress = Data.define(:key, :value, :ctrl, :alt, :shift)
     KeyUp = Data.define
     KeyDown = Data.define
     KeyEnter = Data.define
     KeyEscape = Data.define
-    
+
     # Side effect messages
     Later = Data.define(:delay, :message)
     Batch = Data.define(:messages)
-    
+
     # Component messages
     ChildMessage = Data.define(:child_index, :message)
   end
@@ -324,7 +409,7 @@ module Milktea
   class Program
     FPS = 60
     REFRESH_INTERVAL = 1.0 / FPS
-    
+
     def initialize(model, runtime: nil, renderer: nil)
       @model = model
       @runtime = runtime || Runtime.new
@@ -332,7 +417,7 @@ module Milktea
       @timers = Timers::Group.new
       @reader = TTY::Reader.new(interrupt: :error)
     end
-    
+
     def run
       @runtime.start
       @renderer.setup_screen
@@ -342,7 +427,7 @@ module Milktea
     ensure
       @renderer.restore_screen
     end
-    
+
     def stop
       @runtime.stop
     end
@@ -350,9 +435,9 @@ module Milktea
     def running?
       @runtime.running?
     end
-    
+
     private
-    
+
     def process_messages
       read_keyboard_input
       @model = @runtime.tick(@model)
@@ -392,13 +477,13 @@ end
 ```ruby
 class Counter < Milktea::Model
   private
-  
+
   def default_state
     { count: 0 }
   end
-  
+
   public
-  
+
   def view
     TTY::Box.frame(
       "Count: #{state[:count]}\n\n" \
@@ -408,7 +493,7 @@ class Counter < Milktea::Model
       title: "Counter"
     )
   end
-  
+
   def update(message)
     case message
     when Milktea::Message::KeyPress
@@ -440,37 +525,73 @@ program = Milktea::Program.new(counter, runtime: runtime, renderer: renderer)
 program.run
 ```
 
-### Composite Component
+### Dynamic Composite Component
 
 ```ruby
 class Dashboard < Milktea::Model
-  class << self
-    child Counter, ->(state) { { count: state[:count] } }
-    child StatusBar, ->(state) { { message: state[:status_message] } }
+  child :current_counter, ->(state) { { count: state[:count] } }
+  child StatusBar, ->(state) { { message: state[:status_message] } }
+
+  def current_counter
+    state[:advanced_mode] ? AdvancedCounter : SimpleCounter
   end
-  
+
   private
-  
+
   def default_state
-    { count: 0, status_message: "Ready", app_version: "1.0" }
+    { count: 0, status_message: "Ready", app_version: "1.0", advanced_mode: false }
   end
-  
+
   public
-  
+
   def view
     TTY::Box.frame(children_views, title: "Dashboard v#{state[:app_version]}")
   end
-  
+
   def update(message)
     case message
     when Milktea::Message::KeyPress
       case message.key
       when 'i'
         [with(count: state[:count] + 1), Milktea::Message::None.new]
+      when 'm'
+        [with(advanced_mode: !state[:advanced_mode]), Milktea::Message::None.new]
       when 'r'
         [with(count: 0, status_message: "Reset!"), Milktea::Message::None.new]
       when 'q'
         [self, Milktea::Message::Quit.new]
+      else
+        [self, Milktea::Message::None.new]
+      end
+    else
+      [self, Milktea::Message::None.new]
+    end
+  end
+end
+```
+
+### Container Layout Example
+
+```ruby
+class LayoutDemo < Milktea::Container
+  direction :column
+  child :status_bar, flex: 1
+  child :dynamic_layout, ->(state) { state.slice(:data) }, flex: 5
+
+  def status_bar
+    StatusBar
+  end
+
+  def dynamic_layout
+    state[:show_column] ? ColumnLayout : RowLayout
+  end
+
+  def update(message)
+    case message
+    when Milktea::Message::KeyPress
+      case message.key
+      when 't'
+        [with(show_column: !state[:show_column]), Milktea::Message::None.new]
       else
         [self, Milktea::Message::None.new]
       end
@@ -574,18 +695,18 @@ The key insight is that Zeitwerk handles the actual reloading automatically, so 
 ```ruby
 RSpec.describe Counter do
   subject(:counter) { described_class.new }
-  
+
   describe '#update' do
     context 'with increment message' do
       let(:message) { Milktea::Message::KeyPress.new(key: 'i') }
-      
+
       it 'increments the count' do
         new_model, _side_effect = counter.update(message)
         expect(new_model.send(:state)[:count]).to eq(1)
       end
     end
   end
-  
+
   describe '#view' do
     it 'renders the current count' do
       expect(counter.view).to include('Count: 0')
@@ -602,7 +723,7 @@ RSpec.describe Milktea::Program do
   let(:output) { StringIO.new }
   let(:renderer) { Milktea::Renderer.new(output) }
   subject(:program) { described_class.new(initial_model, renderer: renderer) }
-  
+
   describe '#run' do
     it 'renders initial model' do
       program.run
@@ -632,14 +753,91 @@ end
 - Minimal memory allocation
 - Responsive user interface
 
+## Dynamic Child Resolution
+
+### Symbol-Based Component Selection
+
+The framework supports dynamic child resolution through Symbol-based definitions:
+
+```ruby
+class DynamicApp < Milktea::Model
+  child :current_view  # Symbol resolves to method
+  child StatusBar      # Traditional class reference
+
+  def current_view
+    case state[:mode]
+    when :editing then EditView
+    when :viewing then DisplayView
+    else DefaultView
+    end
+  end
+end
+```
+
+### Container Dynamic Layouts
+
+Containers can switch layout types while preserving bounds:
+
+```ruby
+class LayoutDemo < Milktea::Container
+  direction :column
+  child :status_bar, flex: 1
+  child :dynamic_layout, ->(state) { state.slice(:data) }, flex: 5
+
+  def dynamic_layout
+    state[:show_column] ? ColumnLayout : RowLayout
+  end
+end
+```
+
+### Error Handling Strategy
+
+1. **NoMethodError**: Caught and converted to descriptive ArgumentError
+2. **Type Validation**: Ensures resolved classes inherit from Model
+3. **Clear Messages**: Distinguishes between missing methods and invalid types
+
+## Layout System Architecture
+
+### Flexbox-Style Proportional Sizing
+
+```mermaid
+graph TB
+    Container["Container (80x24)"] --> Child1["Child 1 (flex: 1)"]
+    Container --> Child2["Child 2 (flex: 3)"]
+    Container --> Child3["Child 3 (flex: 1)"]
+
+    Child1 --> Size1["Height: 4.8 (20%)"]
+    Child2 --> Size2["Height: 14.4 (60%)"]
+    Child3 --> Size3["Height: 4.8 (20%)"]
+
+    subgraph "Column Direction"
+        Container
+        Child1
+        Child2
+        Child3
+    end
+```
+
+### Bounds Propagation
+
+```mermaid
+sequenceDiagram
+    participant Container
+    participant FlexCalculator
+    participant ChildComponent
+
+    Container->>FlexCalculator: Calculate child dimensions
+    FlexCalculator->>FlexCalculator: Distribute space by flex values
+    FlexCalculator-->>Container: Child bounds (x, y, width, height)
+    Container->>ChildComponent: new(state.merge(bounds))
+    ChildComponent-->>Container: Initialized with correct bounds
+```
+
 ## Future Development
 
 ### Planned Features
 
-1. **Advanced Layout System**: Flexbox-like layout for complex UIs
-2. **Animation Support**: Smooth transitions and effects
-3. **Plugin Architecture**: Extensible middleware system
-4. **Dev Tools**: Time travel debugging and performance profiling
+1. **Advanced Widgets**: Input fields, tables, trees, and menus
 
 ### Community
 
