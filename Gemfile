@@ -8,9 +8,7 @@ gemspec
 gem "rake", "~> 13.0"
 
 gem "rspec", "~> 3.0"
-gem "rubocop", "~> 1.21"
-gem "rubocop-on-rbs"
-gem "rubocop-rubycw"
+gem "rubocop", "~> 1.76.0"
 gem "ruby-lsp"
 
 gem "listen", "~> 3.9"

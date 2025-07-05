@@ -1,7 +1,3 @@
-plugins:
-  - rubocop-rubycw
-  - rubocop-on-rbs
-
 AllCops:
   NewCops: enable
   SuggestExtensions: false
