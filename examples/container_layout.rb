@@ -70,13 +70,7 @@ class ColumnLayoutModel < Milktea::Container
   child BoxModel, ->(state) { { title: "Footer", content: "Bottom Status", value: state[:footer_value] } }, flex: 1
 
   def view
-    <<~VIEW
-      #{TTY::Box.frame(title: { top_left: " Column Layout " }, border: :light) { "Direction: #{self.class.flex_direction}" }}
-
-      #{children_views}
-
-      Controls: +/- to increment/decrement values, 't' to toggle layout, 'q' to quit
-    VIEW
+    children_views
   end
 
   def update(message)
@@ -124,13 +118,7 @@ class RowLayoutModel < Milktea::Container
   child BoxModel, ->(state) { { title: "Right", content: "Info Panel", value: state[:right_value] } }, flex: 1
 
   def view
-    <<~VIEW
-      #{TTY::Box.frame(title: { top_left: " Row Layout " }, border: :light) { "Direction: #{self.class.flex_direction}" }}
-
-      #{children_views}
-
-      Controls: +/- to increment/decrement values, 't' to toggle layout, 'q' to quit
-    VIEW
+    children_views
   end
 
   def update(message)
@@ -170,22 +158,57 @@ class RowLayoutModel < Milktea::Container
   end
 end
 
-# Main application that toggles between layouts
-class LayoutDemoModel < Milktea::Model
+# Status bar model
+class StatusBar < Milktea::Model
   def view
-    current_layout.view
+    layout_type = state[:show_column] ? "Column" : "Row"
+    TTY::Box.frame(
+      top: bounds.y,
+      left: bounds.x,
+      width: bounds.width,
+      height: bounds.height,
+      title: { top_left: " Layout Demo " },
+      border: :light,
+      align: :center
+    ) do
+      "Current: #{layout_type} Layout | 't' toggle | '+/-' change values | 'q' quit"
+    end
+  end
+
+  def update(_message)
+    [self, Milktea::Message::None.new]
+  end
+
+  private
+
+  def bounds
+    @bounds ||= Milktea::Bounds.new(
+      width: state[:width] || screen_width,
+      height: state[:height] || screen_height,
+      x: state[:x] || 0,
+      y: state[:y] || 0
+    )
+  end
+end
+
+
+
+# Main application that toggles between layouts
+class LayoutDemoModel < Milktea::Container
+  direction :column
+  child :status_bar, flex: 1
+  child :dynamic_layout, lambda { |state|
+    state.slice(:header_value, :content_value, :footer_value, :left_value, :center_value, :right_value)
+  }, flex: 5
+
+  def view
+    children_views
   end
 
   def update(message)
     case message
     when Milktea::Message::KeyPress
-      if message.value == "t"
-        toggle_layout
-      else
-        # Forward message to current layout
-        new_layout, cmd = current_layout.update(message)
-        [with(layout: new_layout), cmd]
-      end
+      handle_keypress(message)
     else
       [self, Milktea::Message::None.new]
     end
@@ -195,23 +218,59 @@ class LayoutDemoModel < Milktea::Model
 
   def default_state
     {
-      layout: ColumnLayoutModel.new,
-      show_column: true
+      show_column: true,
+      header_value: 1,
+      content_value: 10,
+      footer_value: 5,
+      left_value: 3,
+      center_value: 7,
+      right_value: 2
     }
   end
 
-  def current_layout
-    state[:layout]
+  def status_bar
+    StatusBar
   end
 
-  def toggle_layout
-    new_layout = if state[:show_column]
-                   RowLayoutModel.new
-                 else
-                   ColumnLayoutModel.new
-                 end
+  def dynamic_layout
+    state[:show_column] ? ColumnLayoutModel : RowLayoutModel
+  end
 
-    [with(layout: new_layout, show_column: !state[:show_column]), Milktea::Message::None.new]
+  def handle_keypress(message)
+    case message.value
+    when "t"
+      [with(show_column: !state[:show_column]), Milktea::Message::None.new]
+    when "+"
+      increment_values
+    when "-"
+      decrement_values
+    when "q"
+      [self, Milktea::Message::Exit.new]
+    else
+      [self, Milktea::Message::None.new]
+    end
+  end
+
+  def increment_values
+    [with(
+      header_value: state[:header_value] + 1,
+      content_value: state[:content_value] + 1,
+      footer_value: state[:footer_value] + 1,
+      left_value: state[:left_value] + 1,
+      center_value: state[:center_value] + 1,
+      right_value: state[:right_value] + 1
+    ), Milktea::Message::None.new]
+  end
+
+  def decrement_values
+    [with(
+      header_value: [state[:header_value] - 1, 0].max,
+      content_value: [state[:content_value] - 1, 0].max,
+      footer_value: [state[:footer_value] - 1, 0].max,
+      left_value: [state[:left_value] - 1, 0].max,
+      center_value: [state[:center_value] - 1, 0].max,
+      right_value: [state[:right_value] - 1, 0].max
+    ), Milktea::Message::None.new]
   end
 end
 

@@ -7,7 +7,7 @@ module Milktea
 
     class << self
       # Define a child model with optional state mapping and flex properties
-      # @param klass [Class] The child model class
+      # @param klass [Class, Symbol] The child model class or method name
       # @param mapper [Proc] Lambda to map parent state to child state
       # @param flex [Integer] Flex grow factor for layout
       def child(klass, mapper = nil, flex: 1)
@@ -73,7 +73,7 @@ module Milktea
         child_height = calculate_child_height(definition[:flex], total_flex)
         child_state = build_child_state_column(definition, parent_state, current_y, child_height)
         current_y += child_height
-        definition[:class].new(child_state)
+        resolve_child_class(definition[:class]).new(child_state)
       end.freeze
     end
 
@@ -85,7 +85,7 @@ module Milktea
         child_width = calculate_child_width(definition[:flex], total_flex)
         child_state = build_child_state_row(definition, parent_state, current_x, child_width)
         current_x += child_width
-        definition[:class].new(child_state)
+        resolve_child_class(definition[:class]).new(child_state)
       end.freeze
     end
 
@@ -117,6 +117,21 @@ module Milktea
         x: pos_x,
         y: bounds.y
       )
+    end
+
+    def resolve_child_class(klass_or_symbol)
+      case klass_or_symbol
+      when Symbol
+        # Call the method with the symbol name to get the class
+        result = send(klass_or_symbol)
+        raise ArgumentError, "Child must be a Class or Symbol, got #{result.class}" unless result.is_a?(Class)
+
+        result
+      when Class
+        klass_or_symbol
+      else
+        raise ArgumentError, "Child must be a Class or Symbol, got #{klass_or_symbol.class}"
+      end
     end
   end
 end

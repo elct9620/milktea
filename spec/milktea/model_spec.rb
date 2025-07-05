@@ -184,7 +184,7 @@ RSpec.describe Milktea::Model do
     describe "#children_views" do
       subject(:combined_views) { parent_model.children_views }
 
-      it { expect(combined_views).to eq("Child Count: 5\nStatus: Active") }
+      it { expect(combined_views).to eq("Child Count: 5Status: Active") }
     end
 
     describe "#with" do
