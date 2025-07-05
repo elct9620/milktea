@@ -419,3 +419,7 @@ end
 ## Repository Management
 
 - Keep ARCHITECTURE.md updated when we change anything
+
+## Development Preferences
+
+- Prefer using `return ... if` style instead of `if ... else` for early returns or value determination

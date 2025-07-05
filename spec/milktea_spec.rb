@@ -3,6 +3,11 @@
 require "spec_helper"
 
 RSpec.describe Milktea do
+  after do
+    # Reset the app after each test to prevent interference
+    described_class.app = nil
+  end
+
   it "has a version number" do
     expect(Milktea::VERSION).not_to be nil
   end
@@ -76,6 +81,31 @@ RSpec.describe Milktea do
       end
 
       it { expect(config.app_dir).to eq("second") }
+    end
+  end
+
+  describe ".app" do
+    subject { described_class.app }
+
+    it { is_expected.to be_nil }
+  end
+
+  describe ".app=" do
+    let(:test_app) { Class.new(Milktea::Application) }
+
+    context "when setting app" do
+      before { described_class.app = test_app }
+
+      it { expect(described_class.app).to eq(test_app) }
+    end
+
+    context "when setting app to nil" do
+      before do
+        described_class.app = test_app
+        described_class.app = nil
+      end
+
+      it { expect(described_class.app).to be_nil }
     end
   end
 end

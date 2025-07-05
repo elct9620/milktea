@@ -11,27 +11,20 @@ RSpec.describe Milktea::Loader do
     it { is_expected.to be_a(described_class) }
   end
 
-  describe "#start" do
+  describe "#setup" do
+    let(:zeitwerk_loader) { spy("zeitwerk_loader") }
+    let(:zeitwerk_loader_class) { spy("Zeitwerk::Loader") }
+
     before do
-      allow(loader).to receive(:setup_loader)
-      allow(loader).to receive(:hot_reload)
+      stub_const("Zeitwerk::Loader", zeitwerk_loader_class)
+      allow(zeitwerk_loader_class).to receive(:new).and_return(zeitwerk_loader)
+      loader.setup
     end
 
-    context "when hot_reloading is disabled" do
-      before { loader.start }
-
-      it { expect(loader).to have_received(:setup_loader) }
-      it { expect(loader).not_to have_received(:hot_reload) }
-    end
-
-    context "when hot_reloading is enabled" do
-      let(:config) { spy("config", app_path: app_path, runtime: runtime, hot_reloading?: true) }
-
-      before { loader.start }
-
-      it { expect(loader).to have_received(:setup_loader) }
-      it { expect(loader).to have_received(:hot_reload) }
-    end
+    it { expect(zeitwerk_loader_class).to have_received(:new) }
+    it { expect(zeitwerk_loader).to have_received(:push_dir).with(app_path) }
+    it { expect(zeitwerk_loader).to have_received(:enable_reloading) }
+    it { expect(zeitwerk_loader).to have_received(:setup) }
   end
 
   describe "#hot_reload" do
@@ -69,10 +62,10 @@ RSpec.describe Milktea::Loader do
 
     before { stub_const("Zeitwerk::Loader", zeitwerk_loader_class) }
 
-    context "when loader has been started" do
+    context "when loader has been setup" do
       before do
         allow(zeitwerk_loader_class).to receive(:new).and_return(zeitwerk_loader)
-        loader.start
+        loader.setup
         loader.reload
       end
 
@@ -80,27 +73,11 @@ RSpec.describe Milktea::Loader do
       it { expect(runtime).to have_received(:enqueue).with(instance_of(Milktea::Message::Reload)) }
     end
 
-    context "when loader has not been started" do
+    context "when loader has not been setup" do
       before { loader.reload }
 
       it { expect(zeitwerk_loader).not_to have_received(:reload) }
       it { expect(runtime).not_to have_received(:enqueue) }
     end
-  end
-
-  describe "#setup_loader" do
-    let(:zeitwerk_loader) { spy("zeitwerk_loader") }
-    let(:zeitwerk_loader_class) { spy("Zeitwerk::Loader") }
-
-    before do
-      stub_const("Zeitwerk::Loader", zeitwerk_loader_class)
-      allow(zeitwerk_loader_class).to receive(:new).and_return(zeitwerk_loader)
-      loader.send(:setup_loader)
-    end
-
-    it { expect(zeitwerk_loader_class).to have_received(:new) }
-    it { expect(zeitwerk_loader).to have_received(:push_dir).with(app_path) }
-    it { expect(zeitwerk_loader).to have_received(:enable_reloading) }
-    it { expect(zeitwerk_loader).to have_received(:setup) }
   end
 end

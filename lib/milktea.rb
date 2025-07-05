@@ -10,9 +10,17 @@ loader.setup
 module Milktea
   class Error < StandardError; end
 
-  CONFIG_MUTEX = Mutex.new
+  MUTEX = Mutex.new
 
   class << self
+    def app
+      MUTEX.synchronize { @app }
+    end
+
+    def app=(app)
+      MUTEX.synchronize { @app = app }
+    end
+
     def root
       @root ||= find_root
     end
@@ -22,13 +30,13 @@ module Milktea
     end
 
     def config
-      CONFIG_MUTEX.synchronize do
+      MUTEX.synchronize do
         @config ||= Config.new
       end
     end
 
     def configure(&block)
-      CONFIG_MUTEX.synchronize do
+      MUTEX.synchronize do
         @config = if block_given?
                     Config.new(&block)
                   else

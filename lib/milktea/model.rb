@@ -47,7 +47,9 @@ module Milktea
     # @return [Model] New model instance with updated state
     def with(new_state = {})
       merged_state = @state.merge(new_state)
-      Kernel.const_get(self.class.name).new(merged_state)
+      return Kernel.const_get(self.class.name).new(merged_state) if self.class.name
+
+      self.class.new(merged_state)
     end
 
     # Combine all children views into a single string

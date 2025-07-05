@@ -13,9 +13,11 @@ module Milktea
       @listener = nil
     end
 
-    def start
-      setup_loader
-      hot_reload if @config.hot_reloading?
+    def setup
+      @loader = Zeitwerk::Loader.new
+      @loader.push_dir(@app_dir)
+      @loader.enable_reloading
+      @loader.setup
     end
 
     def hot_reload
@@ -35,15 +37,6 @@ module Milktea
 
       @loader.reload
       @runtime.enqueue(Message::Reload.new)
-    end
-
-    private
-
-    def setup_loader
-      @loader = Zeitwerk::Loader.new
-      @loader.push_dir(@app_dir)
-      @loader.enable_reloading
-      @loader.setup
     end
   end
 end
