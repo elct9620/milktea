@@ -3,6 +3,7 @@ AllCops:
   SuggestExtensions: false
   TargetRubyVersion: 3.2
   Exclude:
+    - 'vendor/**/*'
     - 'examples/**/*'
 
 Style/StringLiterals:
