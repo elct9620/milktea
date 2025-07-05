@@ -5,6 +5,18 @@ require "bundler/setup"
 require "milktea"
 require "tty-box"
 
+# Container Layout Demo with Terminal Resize Support
+#
+# This example demonstrates:
+# - Flexbox-style container layouts (column and row)
+# - Dynamic layout switching
+# - Terminal resize handling at the root level
+#
+# When the terminal is resized, only the root model (LayoutDemoModel) needs
+# to handle Message::Resize by calling `with` to rebuild itself. All child
+# containers and components will automatically recalculate their bounds and
+# adapt to the new screen dimensions.
+
 # Box model that renders a tty-box with content
 class BoxModel < Milktea::Container
   def view
@@ -183,8 +195,6 @@ class StatusBar < Milktea::Model
   end
 end
 
-
-
 # Main application that toggles between layouts
 class LayoutDemoModel < Milktea::Container
   direction :column
@@ -197,6 +207,9 @@ class LayoutDemoModel < Milktea::Container
     case message
     when Milktea::Message::KeyPress
       handle_keypress(message)
+    when Milktea::Message::Resize
+      # Rebuild model with fresh class to pick up new screen dimensions
+      [with, Milktea::Message::None.new]
     else
       [self, Milktea::Message::None.new]
     end
@@ -263,9 +276,10 @@ class LayoutDemoModel < Milktea::Container
 end
 
 # Create and run the layout demo
-puts "Container Layout Demo"
+puts "Container Layout Demo with Terminal Resize Support"
 puts "Press 't' to toggle between column and row layouts"
 puts "Use +/- to change values, 'q' to quit"
+puts "Try resizing your terminal window to see automatic layout adaptation"
 puts "Press any key to start..."
 $stdin.gets
 
