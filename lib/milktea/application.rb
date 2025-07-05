@@ -14,17 +14,21 @@ module Milktea
       end
 
       def root(model_name = nil)
-        if model_name
-          @root_model_name = model_name
-        else
-          @root_model_name
-        end
+        return @root_model_name if model_name.nil?
+
+        @root_model_name = model_name
       end
 
       def root_model_class
         return unless @root_model_name
 
-        Object.const_get(@root_model_name)
+        Kernel.const_get(@root_model_name)
+      end
+
+      def boot
+        return new.run if @root_model_name
+
+        raise Error, "No root model defined. Use 'root \"ModelName\"' in your Application class."
       end
     end
 
@@ -49,10 +53,12 @@ module Milktea
     end
 
     def setup_program
-      root_model = self.class.root_model_class&.new
-      raise Error, "No root model defined. Use 'root \"ModelName\"' in your Application class." unless root_model
+      unless self.class.root_model_class
+        raise Error,
+              "No root model defined. Use 'root \"ModelName\"' in your Application class."
+      end
 
-      @program = Program.new(root_model, config: config)
+      @program = Program.new(self.class.root_model_class.new, config: config)
     end
   end
 end

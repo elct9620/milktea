@@ -58,7 +58,7 @@ puts "Edit files in hot_reload_demo/models/ to see changes instantly!"
 puts ""
 
 begin
-  HotReloadDemo.new.run
+  HotReloadDemo.boot
 rescue Interrupt
   puts "\nDemo ended. Thanks for trying the new Application class!"
 end

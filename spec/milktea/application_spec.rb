@@ -170,4 +170,31 @@ RSpec.describe Milktea::Application do
 
     it { expect(app.program).to eq(program) }
   end
+
+  describe ".boot" do
+    context "when root model is defined" do
+      subject(:app_instance) { instance_double(test_app_class, run: nil) }
+
+      before do
+        allow(test_app_class).to receive(:new).and_return(app_instance)
+      end
+
+      it "creates new instance and runs it" do
+        test_app_class.boot
+        expect(test_app_class).to have_received(:new)
+        expect(app_instance).to have_received(:run)
+      end
+    end
+
+    context "when no root model is defined" do
+      subject(:app_class) { Class.new(described_class) }
+
+      it "raises an error" do
+        expect { app_class.boot }.to raise_error(
+          Milktea::Error,
+          'No root model defined. Use \'root "ModelName"\' in your Application class.'
+        )
+      end
+    end
+  end
 end
