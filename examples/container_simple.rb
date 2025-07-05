@@ -1,7 +1,14 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "bundler/setup"
+require "bundler/inline"
+
+gemfile do
+  source "https://rubygems.org"
+  gem "milktea", path: "../"
+  gem "tty-box", "~> 0.7.0"
+end
+
 require "milktea"
 require "tty-box"
 
