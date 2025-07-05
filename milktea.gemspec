@@ -33,7 +33,6 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "timers", "~> 4.3"
-  spec.add_dependency "tty-box", "~> 0.7"
   spec.add_dependency "tty-cursor", "~> 0.7"
   spec.add_dependency "tty-reader", "~> 0.9"
   spec.add_dependency "tty-screen", "~> 0.8"

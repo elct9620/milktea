@@ -3,7 +3,6 @@ PATH
   specs:
     milktea (0.1.0)
       timers (~> 4.3)
-      tty-box (~> 0.7)
       tty-cursor (~> 0.7)
       tty-reader (~> 0.9)
       tty-screen (~> 0.8)
@@ -106,6 +105,7 @@ DEPENDENCIES
   rspec (~> 3.0)
   rubocop (~> 1.21)
   ruby-lsp
+  tty-box (~> 0.7)
 
 BUNDLED WITH
    2.6.2

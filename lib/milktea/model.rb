@@ -57,7 +57,7 @@ module Milktea
     # Combine all children views into a single string
     # @return [String] Combined views of all children
     def children_views
-      @children.map(&:view).join("\n")
+      @children.map(&:view).join
     end
 
     # Get the current screen width

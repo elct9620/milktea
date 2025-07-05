@@ -19,6 +19,7 @@ module Milktea
     end
 
     def setup_screen
+      @output.print @cursor.hide
       @output.print @cursor.clear_screen
       @output.print @cursor.move_to(0, 0)
       @output.flush
@@ -26,6 +27,7 @@ module Milktea
 
     def restore_screen
       @output.print @cursor.clear_screen
+      @output.print @cursor.show
       @output.flush
     end
   end
