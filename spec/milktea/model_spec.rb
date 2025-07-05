@@ -259,6 +259,112 @@ RSpec.describe Milktea::Model do
     end
   end
 
+  describe "dynamic child resolution" do
+    let(:dynamic_model_class) do
+      Class.new(described_class) do
+        child :dynamic_child
+        child Class.new(Milktea::Model)
+
+        def view
+          "Dynamic Parent"
+        end
+
+        def update(_message)
+          [self, Milktea::Message::None.new]
+        end
+
+        def dynamic_child
+          state[:use_special] ? SpecialChildModel : RegularChildModel
+        end
+      end
+    end
+
+    let(:special_child_model) do
+      Class.new(described_class) do
+        def view
+          "Special"
+        end
+
+        def update(_message)
+          [self, Milktea::Message::None.new]
+        end
+      end
+    end
+
+    let(:regular_child_model) do
+      Class.new(described_class) do
+        def view
+          "Regular"
+        end
+
+        def update(_message)
+          [self, Milktea::Message::None.new]
+        end
+      end
+    end
+
+    before do
+      stub_const("SpecialChildModel", special_child_model)
+      stub_const("RegularChildModel", regular_child_model)
+    end
+
+    context "when using regular child" do
+      subject(:model) { dynamic_model_class.new(use_special: false) }
+
+      it { expect(model.children.first).to be_a(RegularChildModel) }
+    end
+
+    context "when using special child" do
+      subject(:model) { dynamic_model_class.new(use_special: true) }
+
+      it { expect(model.children.first).to be_a(SpecialChildModel) }
+    end
+
+    context "when invalid child type" do
+      let(:invalid_model_class) do
+        Class.new(described_class) do
+          child :invalid_child
+
+          def view
+            "Invalid Parent"
+          end
+
+          def update(_message)
+            [self, Milktea::Message::None.new]
+          end
+
+          def invalid_child
+            "not a class"
+          end
+        end
+      end
+
+      subject(:model) { invalid_model_class.new }
+
+      it { expect { model.children }.to raise_error(ArgumentError, /Child must be a Model class/) }
+    end
+
+    context "when method not found" do
+      let(:missing_method_model_class) do
+        Class.new(described_class) do
+          child :missing_method
+
+          def view
+            "Missing Method Parent"
+          end
+
+          def update(_message)
+            [self, Milktea::Message::None.new]
+          end
+        end
+      end
+
+      subject(:model) { missing_method_model_class.new }
+
+      it { expect { model.children }.to raise_error(ArgumentError, /Method missing_method not found/) }
+    end
+  end
+
   describe "screen methods" do
     before do
       allow(TTY::Screen).to receive(:width).and_return(80)

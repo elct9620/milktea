@@ -9,7 +9,7 @@ module Milktea
 
     class << self
       # Define a child model with optional state mapping
-      # @param klass [Class] The child model class
+      # @param klass [Class, Symbol] The child model class or method name
       # @param mapper [Proc] Lambda to map parent state to child state
       def child(klass, mapper = nil)
         @children ||= []
@@ -85,10 +85,22 @@ module Milktea
     # @return [Array<Model>] Array of child model instances
     def build_children(parent_state)
       self.class.children.map do |definition|
-        klass = definition[:class]
         state = definition[:mapper].call(parent_state)
-        klass.new(state)
+        resolve_child(definition[:class], state)
       end.freeze
+    end
+
+    # Resolve child class and create instance
+    # @param klass [Class, Symbol] The child model class or method name
+    # @param state [Hash] The state to pass to the child
+    # @return [Model] Child model instance
+    def resolve_child(klass, state)
+      klass = send(klass) if klass.is_a?(Symbol)
+      raise ArgumentError, "Child must be a Model class, got #{klass.class}" unless klass.is_a?(Class) && klass <= Model
+
+      klass.new(state)
+    rescue NoMethodError
+      raise ArgumentError, "Method #{klass} not found for dynamic child resolution"
     end
 
     # Override in subclasses to provide default state
