@@ -69,10 +69,6 @@ class ColumnLayoutModel < Milktea::Container
   child BoxModel, ->(state) { { title: "Content", content: "Main Area", value: state[:content_value] } }, flex: 3
   child BoxModel, ->(state) { { title: "Footer", content: "Bottom Status", value: state[:footer_value] } }, flex: 1
 
-  def view
-    children_views
-  end
-
   def update(message)
     case message
     when Milktea::Message::KeyPress
@@ -116,10 +112,6 @@ class RowLayoutModel < Milktea::Container
   child BoxModel, ->(state) { { title: "Left", content: "Sidebar", value: state[:left_value] } }, flex: 1
   child BoxModel, ->(state) { { title: "Center", content: "Main Content", value: state[:center_value] } }, flex: 2
   child BoxModel, ->(state) { { title: "Right", content: "Info Panel", value: state[:right_value] } }, flex: 1
-
-  def view
-    children_views
-  end
 
   def update(message)
     case message
@@ -200,10 +192,6 @@ class LayoutDemoModel < Milktea::Container
   child :dynamic_layout, lambda { |state|
     state.slice(:header_value, :content_value, :footer_value, :left_value, :center_value, :right_value)
   }, flex: 5
-
-  def view
-    children_views
-  end
 
   def update(message)
     case message

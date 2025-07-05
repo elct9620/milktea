@@ -38,6 +38,8 @@ module Milktea
       super(state.except(:width, :height, :x, :y))
     end
 
+    def view = children_views
+
     private
 
     def extract_bounds(state)
