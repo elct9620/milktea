@@ -517,7 +517,7 @@ end
 
 ## Important Notes
 
-- Ruby version requirement: >= 3.1.0
+- Ruby version requirement: >= 3.2.0
 - Uses conventional commits format in English
 - The gemspec uses git to determine which files to include in the gem
 - Currently in early development (v0.1.0) with core architecture implemented

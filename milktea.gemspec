@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.description = "The TUI framework for Ruby, inspired by the bubbletea framework for Go."
   spec.homepage = "https://github.com/elct9620/milktea"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.1.0"
+  spec.required_ruby_version = ">= 3.2.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/elct9620/milktea"
