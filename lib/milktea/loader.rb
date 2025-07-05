@@ -7,15 +7,15 @@ module Milktea
   class Loader
     def initialize(config = nil)
       @config = config || Milktea.config
-      @app_dir = @config.app_path
+      @autoload_paths = @config.autoload_paths
       @runtime = @config.runtime
       @loader = nil
-      @listener = nil
+      @listeners = []
     end
 
     def setup
       @loader = Zeitwerk::Loader.new
-      @loader.push_dir(@app_dir)
+      @autoload_paths.each { |path| @loader.push_dir(path) }
       @loader.enable_reloading
       @loader.setup
     end
@@ -24,10 +24,13 @@ module Milktea
       gem "listen"
       require "listen"
 
-      @listener = Listen.to(@app_dir, only: /\.rb$/) do |modified, added, removed|
-        reload if modified.any? || added.any? || removed.any?
+      @listeners = @autoload_paths.map do |path|
+        Listen.to(path, only: /\.rb$/) do |modified, added, removed|
+          reload if modified.any? || added.any? || removed.any?
+        end
       end
-      @listener.start
+
+      @listeners.each(&:start)
     rescue Gem::LoadError
       # Listen gem not available, skip file watching
     end

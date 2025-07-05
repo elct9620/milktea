@@ -9,6 +9,7 @@ module Milktea
     class << self
       def inherited(subclass)
         super
+
         Milktea.app = subclass
       end
 

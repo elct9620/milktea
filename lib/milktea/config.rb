@@ -3,11 +3,11 @@
 module Milktea
   # Configuration class for Milktea applications
   class Config
-    attr_accessor :app_dir, :output
+    attr_accessor :autoload_dirs, :output
     attr_writer :hot_reloading, :runtime, :renderer
 
     def initialize
-      @app_dir = "app"
+      @autoload_dirs = ["app/models"]
       @output = $stdout
       @hot_reloading = nil # Will be set by lazy evaluation
       @runtime = nil # Will be set by lazy evaluation
@@ -28,8 +28,8 @@ module Milktea
       @renderer ||= Renderer.new(@output)
     end
 
-    def app_path
-      Milktea.root.join(@app_dir)
+    def autoload_paths
+      @autoload_dirs.map { |dir| Milktea.root.join(dir) }
     end
   end
 end

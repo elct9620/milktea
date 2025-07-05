@@ -3,8 +3,8 @@
 RSpec.describe Milktea::Loader do
   subject(:loader) { described_class.new(config) }
 
-  let(:config) { spy("config", app_path: app_path, runtime: runtime, hot_reloading?: false) }
-  let(:app_path) { Pathname.new("/path/to/app") }
+  let(:config) { spy("config", autoload_paths: autoload_paths, runtime: runtime, hot_reloading?: false) }
+  let(:autoload_paths) { [Pathname.new("/path/to/app"), Pathname.new("/path/to/lib")] }
   let(:runtime) { spy("runtime") }
 
   describe "#initialize" do
@@ -22,7 +22,8 @@ RSpec.describe Milktea::Loader do
     end
 
     it { expect(zeitwerk_loader_class).to have_received(:new) }
-    it { expect(zeitwerk_loader).to have_received(:push_dir).with(app_path) }
+    it { expect(zeitwerk_loader).to have_received(:push_dir).with(autoload_paths[0]) }
+    it { expect(zeitwerk_loader).to have_received(:push_dir).with(autoload_paths[1]) }
     it { expect(zeitwerk_loader).to have_received(:enable_reloading) }
     it { expect(zeitwerk_loader).to have_received(:setup) }
   end
@@ -41,8 +42,9 @@ RSpec.describe Milktea::Loader do
         loader.hot_reload
       end
 
-      it { expect(listen_class).to have_received(:to).with(app_path, only: /\.rb$/) }
-      it { expect(listener).to have_received(:start) }
+      it { expect(listen_class).to have_received(:to).with(autoload_paths[0], only: /\.rb$/) }
+      it { expect(listen_class).to have_received(:to).with(autoload_paths[1], only: /\.rb$/) }
+      it { expect(listener).to have_received(:start).twice }
     end
 
     context "when Listen is not available" do

@@ -53,7 +53,7 @@ RSpec.describe Milktea::Program do
     end
 
     context "when custom config is provided" do
-      let(:custom_config) { Milktea::Config.new { |c| c.app_dir = "custom" } }
+      let(:custom_config) { Milktea::Config.new { |c| c.autoload_dirs = ["custom"] } }
       subject(:program_with_config) { described_class.new(model, config: custom_config) }
 
       it "creates program with custom config without errors" do

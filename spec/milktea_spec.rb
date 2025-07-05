@@ -60,27 +60,27 @@ RSpec.describe Milktea do
     context "when configuring with block" do
       before do
         described_class.configure do |config|
-          config.app_dir = "custom"
+          config.autoload_dirs = ["custom"]
           config.hot_reloading = false
         end
       end
 
-      it { expect(config.app_dir).to eq("custom") }
+      it { expect(config.autoload_dirs).to eq(["custom"]) }
       it { expect(config.hot_reloading?).to be(false) }
     end
 
     context "when called multiple times" do
       before do
         described_class.configure do |config|
-          config.app_dir = "first"
+          config.autoload_dirs = ["first"]
         end
 
         described_class.configure do |config|
-          config.app_dir = "second"
+          config.autoload_dirs = ["second"]
         end
       end
 
-      it { expect(config.app_dir).to eq("second") }
+      it { expect(config.autoload_dirs).to eq(["second"]) }
     end
   end
 

@@ -32,16 +32,16 @@ Milktea is a Terminal User Interface (TUI) framework for Ruby, inspired by the B
 Hot reloading requires the Milktea::Loader system and specific configuration for proper operation:
 
 ```ruby
-# Configure with models directory path
+# Configure with models directory paths
 config = Milktea.configure do |c|
-  # IMPORTANT: app_dir must point to the models directory for Zeitwerk
-  c.app_dir = "examples/hot_reload_demo/models"
+  # IMPORTANT: autoload_dirs must point to directories containing models for Zeitwerk
+  c.autoload_dirs = ["examples/hot_reload_demo/models"]
   c.hot_reloading = true
 end
 
 # Create independent loader
 loader = Milktea::Loader.new(config)
-loader.start # Automatically enables hot_reload if config.hot_reloading?
+loader.hot_reload # Manually start hot reloading
 
 # Create and run program
 model = DemoModel.new
@@ -50,10 +50,11 @@ program = Milktea::Program.new(model, config: config)
 
 ### Critical Implementation Details
 
-1. **app_dir Path Configuration**:
-   - `app_dir` is relative to project root directory
-   - For examples without Gemfile, include full path: `"examples/hot_reload_demo/models"`
-   - Must point to the actual models directory (Zeitwerk requirement)
+1. **autoload_dirs Path Configuration**:
+   - `autoload_dirs` is an array of directories relative to project root
+   - For examples without Gemfile, include full path: `["examples/hot_reload_demo/models"]`
+   - Must point to directories containing models (Zeitwerk requirement)
+   - Multiple directories can be specified: `["app/models", "lib/components"]`
 
 2. **Model Reload Handling**:
    - Models must handle `Message::Reload` events
@@ -87,7 +88,7 @@ program = Milktea::Program.new(model, config: config)
 
 ### Troubleshooting
 
-- **Models not reloading**: Check `app_dir` points to correct models directory
+- **Models not reloading**: Check `autoload_dirs` points to correct models directories
 - **Old behavior persists**: Ensure `Kernel.const_get` is used in `Model#with`
 - **Reload events ignored**: Verify `Message::Reload` handling in model `update` method
 - **Listen gem not found**: Install with `gem install listen` for file watching

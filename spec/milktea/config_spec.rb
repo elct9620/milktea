@@ -6,7 +6,7 @@ RSpec.describe Milktea::Config do
   subject(:config) { described_class.new }
 
   describe "#initialize" do
-    it { expect(config.app_dir).to eq("app") }
+    it { expect(config.autoload_dirs).to eq(["app/models"]) }
     it { expect(config.output).to eq($stdout) }
     it { expect(config.hot_reloading?).to be(false) }
     it { expect(config.runtime).to be_a(Milktea::Runtime) }
@@ -15,12 +15,12 @@ RSpec.describe Milktea::Config do
     context "when providing block configuration" do
       subject(:custom_config) do
         described_class.new do |c|
-          c.app_dir = "src"
+          c.autoload_dirs = %w[src lib]
           c.hot_reloading = false
         end
       end
 
-      it { expect(custom_config.app_dir).to eq("src") }
+      it { expect(custom_config.autoload_dirs).to eq(%w[src lib]) }
       it { expect(custom_config.hot_reloading?).to be(false) }
     end
   end
@@ -101,15 +101,15 @@ RSpec.describe Milktea::Config do
     end
   end
 
-  describe "#app_path" do
+  describe "#autoload_paths" do
     before { allow(Milktea).to receive(:root).and_return(Pathname.new("/project")) }
 
-    it { expect(config.app_path).to eq(Pathname.new("/project/app")) }
+    it { expect(config.autoload_paths).to eq([Pathname.new("/project/app/models")]) }
 
-    context "when app_dir is customized" do
-      before { config.app_dir = "src" }
+    context "when autoload_dirs is customized" do
+      before { config.autoload_dirs = %w[src lib] }
 
-      it { expect(config.app_path).to eq(Pathname.new("/project/src")) }
+      it { expect(config.autoload_paths).to eq([Pathname.new("/project/src"), Pathname.new("/project/lib")]) }
     end
   end
 end
