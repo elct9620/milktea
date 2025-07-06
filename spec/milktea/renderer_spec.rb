@@ -27,9 +27,7 @@ RSpec.describe Milktea::Renderer do
         allow(TTY::Screen).to receive(:size).and_return([80, 24])
       end
 
-      it "renders to stdout by default" do
-        expect { renderer.render(model) }.to output.to_stdout
-      end
+      it { expect { renderer.render(model) }.to output.to_stdout }
     end
 
     context "with custom output" do

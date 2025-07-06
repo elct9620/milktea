@@ -58,9 +58,10 @@ RSpec.describe Milktea::Runtime do
   describe "#enqueue" do
     before { runtime.enqueue(:increment) }
 
-    it "processes message in tick" do
-      new_model = runtime.tick(model)
-      expect(new_model.state[:count]).to eq(1)
+    context "when processing message in tick" do
+      subject(:new_model) { runtime.tick(model) }
+
+      it { expect(new_model.state[:count]).to eq(1) }
     end
   end
 
@@ -85,11 +86,12 @@ RSpec.describe Milktea::Runtime do
     context "with exit message" do
       before { runtime.enqueue(:exit) }
 
-      it "stops runtime when processing exit message" do
+      before do
         runtime.start
         runtime.tick(model)
-        expect(runtime).not_to be_running
       end
+
+      it { expect(runtime).not_to be_running }
     end
 
     context "with None message" do

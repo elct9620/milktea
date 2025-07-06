@@ -42,30 +42,23 @@ RSpec.describe Milktea::Program do
   describe "default config creation" do
     subject(:program_with_default_config) { described_class.new(model) }
 
-    it "creates program with default config" do
-      expect { program_with_default_config }.not_to raise_error
-    end
+    it { expect { program_with_default_config }.not_to raise_error }
   end
 
   describe "#initialize" do
-    it "creates program without errors" do
-      expect { program }.not_to raise_error
-    end
+    it { expect { program }.not_to raise_error }
 
     context "when custom config is provided" do
       let(:custom_config) { Milktea::Config.new { |c| c.autoload_dirs = ["custom"] } }
       subject(:program_with_config) { described_class.new(model, config: custom_config) }
 
-      it "creates program with custom config without errors" do
-        expect { program_with_config }.not_to raise_error
-      end
+      it { expect { program_with_config }.not_to raise_error }
     end
   end
 
   describe "#stop" do
-    it "delegates to runtime stop" do
-      program.stop
-      expect(runtime).to have_received(:stop)
-    end
+    before { program.stop }
+
+    it { expect(runtime).to have_received(:stop) }
   end
 end

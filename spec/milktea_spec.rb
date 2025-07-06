@@ -8,9 +8,7 @@ RSpec.describe Milktea do
     described_class.app = nil
   end
 
-  it "has a version number" do
-    expect(Milktea::VERSION).not_to be nil
-  end
+  it { expect(Milktea::VERSION).not_to be nil }
 
   describe ".root" do
     subject { described_class.root }

@@ -48,15 +48,18 @@ RSpec.describe Milktea::Application do
   end
 
   describe ".inherited" do
-    it "sets the app in Milktea module" do
-      # Create a new class that will trigger the inherited hook
-      app_class = Class.new(described_class) do
-        def self.name
-          "TestInheritedApp"
+    context "when creating a new application class" do
+      let(:app_class) do
+        Class.new(described_class) do
+          def self.name
+            "TestInheritedApp"
+          end
         end
       end
 
-      expect(Milktea.app).to eq(app_class)
+      before { app_class } # Trigger class creation
+
+      it { expect(Milktea.app).to eq(app_class) }
     end
   end
 
@@ -64,10 +67,9 @@ RSpec.describe Milktea::Application do
     context "when setting root model name" do
       subject(:app_class) { Class.new(described_class) }
 
-      it "stores the root model name" do
-        app_class.root("TestModel")
-        expect(app_class.root).to eq("TestModel")
-      end
+      before { app_class.root("TestModel") }
+
+      it { expect(app_class.root).to eq("TestModel") }
     end
 
     context "when getting root model name" do
@@ -92,9 +94,7 @@ RSpec.describe Milktea::Application do
   describe "#initialize" do
     subject(:app) { test_app_class.new(config: config) }
 
-    it "initializes with provided config" do
-      expect(app.config).to eq(config)
-    end
+    it { expect(app.config).to eq(config) }
 
     context "when setting up loader" do
       before { app }
@@ -122,12 +122,7 @@ RSpec.describe Milktea::Application do
     context "when no root model is defined" do
       subject(:app_class) { Class.new(described_class) }
 
-      it "raises an error" do
-        expect { app_class.new }.to raise_error(
-          Milktea::Error,
-          'No root model defined. Use \'root "ModelName"\' in your Application class.'
-        )
-      end
+      it { expect { app_class.new }.to raise_error(Milktea::Error, 'No root model defined. Use \'root "ModelName"\' in your Application class.') }
     end
   end
 
@@ -139,11 +134,10 @@ RSpec.describe Milktea::Application do
         allow(config).to receive(:hot_reloading?).and_return(true)
       end
 
-      it "starts hot reload and runs program" do
-        app.run
-        expect(loader).to have_received(:hot_reload)
-        expect(program).to have_received(:run)
-      end
+      before { app.run }
+
+      it { expect(loader).to have_received(:hot_reload) }
+      it { expect(program).to have_received(:run) }
     end
 
     context "when hot reloading is disabled" do
@@ -151,11 +145,10 @@ RSpec.describe Milktea::Application do
         allow(config).to receive(:hot_reloading?).and_return(false)
       end
 
-      it "only runs program" do
-        app.run
-        expect(loader).not_to have_received(:hot_reload)
-        expect(program).to have_received(:run)
-      end
+      before { app.run }
+
+      it { expect(loader).not_to have_received(:hot_reload) }
+      it { expect(program).to have_received(:run) }
     end
   end
 
@@ -179,22 +172,16 @@ RSpec.describe Milktea::Application do
         allow(test_app_class).to receive(:new).and_return(app_instance)
       end
 
-      it "creates new instance and runs it" do
-        test_app_class.boot
-        expect(test_app_class).to have_received(:new)
-        expect(app_instance).to have_received(:run)
-      end
+      before { test_app_class.boot }
+
+      it { expect(test_app_class).to have_received(:new) }
+      it { expect(app_instance).to have_received(:run) }
     end
 
     context "when no root model is defined" do
       subject(:app_class) { Class.new(described_class) }
 
-      it "raises an error" do
-        expect { app_class.boot }.to raise_error(
-          Milktea::Error,
-          'No root model defined. Use \'root "ModelName"\' in your Application class.'
-        )
-      end
+      it { expect { app_class.boot }.to raise_error(Milktea::Error, 'No root model defined. Use \'root "ModelName"\' in your Application class.') }
     end
   end
 end
