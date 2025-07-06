@@ -1,0 +1,10 @@
+{
+  "release-type": "ruby",
+  "packages": {
+    ".": {
+      "package-name": "milktea",
+      "include-component-in-tag": false,
+      "release-type": "ruby"
+    }
+  }
+}
