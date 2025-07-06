@@ -3,6 +3,20 @@
 require "spec_helper"
 
 RSpec.describe Milktea::Message do
+  describe "Tick" do
+    subject(:tick_message) { described_class::Tick.new }
+
+    it { expect(tick_message.timestamp).to be_a(Time) }
+    it { expect(tick_message).to be_frozen }
+
+    context "when initializing with custom timestamp" do
+      let(:custom_time) { Time.new(2023, 1, 1, 12, 0, 0) }
+      subject(:custom_tick_message) { described_class::Tick.new(timestamp: custom_time) }
+
+      it { expect(custom_tick_message.timestamp).to eq(custom_time) }
+    end
+  end
+
   describe "Resize" do
     before do
       allow(TTY::Screen).to receive(:width).and_return(80)

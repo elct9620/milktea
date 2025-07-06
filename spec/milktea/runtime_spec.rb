@@ -15,6 +15,9 @@ RSpec.describe Milktea::Runtime do
           [with(count: state[:count] + 1), Milktea::Message::None.new]
         when :exit
           [self, Milktea::Message::Exit.new]
+        when Milktea::Message::Tick
+          # Update last tick time but don't trigger render
+          [with(last_tick: message.timestamp), Milktea::Message::None.new]
         else
           [self, Milktea::Message::None.new]
         end
@@ -23,7 +26,7 @@ RSpec.describe Milktea::Runtime do
       private
 
       def default_state
-        { count: 0 }
+        { count: 0, last_tick: nil }
       end
     end
   end
@@ -107,6 +110,16 @@ RSpec.describe Milktea::Runtime do
       end
 
       it { expect(runtime).to be_render }
+    end
+
+    context "with Tick message" do
+      before do
+        runtime.enqueue(Milktea::Message::Tick.new)
+        @new_model = runtime.tick(model)
+      end
+
+      it { expect(runtime).to be_render }
+      it { expect(@new_model.state[:last_tick]).to be_a(Time) }
     end
   end
 end

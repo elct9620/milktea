@@ -39,6 +39,7 @@ module Milktea
 
     def process_messages
       check_resize
+      enqueue(Message::Tick.new)
       @model = tick(@model)
       render(@model) if render?
     end

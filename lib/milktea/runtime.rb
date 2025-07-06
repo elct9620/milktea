@@ -53,18 +53,10 @@ module Milktea
 
     def execute_side_effect(side_effect)
       case side_effect
-      when Message::None
-        # Do nothing
       when Message::Exit
         stop
       when Message::Batch
         side_effect.messages.each { |msg| enqueue(msg) }
-      when Message::Reload
-        # Hot reload handled automatically by Zeitwerk
-        # No additional action needed
-      when Message::Resize
-        # Terminal resize detected
-        # No additional action needed at this level
       end
     end
   end

@@ -9,8 +9,12 @@ module Milktea
     # Message to exit the program
     Exit = Data.define
 
-    # Timer tick message
-    Tick = Data.define
+    # Timer tick message with timestamp
+    Tick = Data.define(:timestamp) do
+      def initialize(timestamp: Time.now)
+        super
+      end
+    end
 
     # Keyboard event message
     KeyPress = Data.define(:key, :value, :ctrl, :alt, :shift) do
