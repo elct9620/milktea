@@ -12,6 +12,8 @@ A Terminal User Interface (TUI) framework for Ruby, inspired by [Bubble Tea](htt
 - 🔄 **Hot Reloading**: Instant feedback during development (similar to web frameworks)
 - 📱 **Responsive Design**: Automatic adaptation to terminal resize events
 - 🧩 **Composable Components**: Build complex UIs from simple, reusable models
+- 📝 **Text Components**: Unicode-aware text rendering with wrapping and truncation
+- ⏱️ **Timing System**: Built-in support for animations and time-based updates
 - 🎨 **Rich Terminal Support**: Leverage TTY gems for advanced terminal features
 
 ## Installation
@@ -224,14 +226,20 @@ end
 
 Explore the `examples/` directory for comprehensive demonstrations:
 
-- **[Container Layout](examples/container_layout.rb)**: Flexbox-style layouts with resize support
+- **[Simple Counter](examples/simple.rb)**: Basic Elm Architecture patterns
+- **[Container Layout](examples/container_layout.rb)**: Flexbox-style layouts with resize support  
+- **[Text Components](examples/text_demo.rb)**: Unicode text rendering with dual modes
+- **[Animations](examples/tick_example.rb)**: Timing-based animations and dynamic content
 - **[Hot Reload Demo](examples/hot_reload_demo.rb)**: Development workflow with instant updates
+- **[Dashboard](examples/dashboard.rb)**: Complex multi-component layout
 
 Run examples:
 
 ```bash
+ruby examples/simple.rb
+ruby examples/text_demo.rb
+ruby examples/tick_example.rb
 ruby examples/container_layout.rb
-ruby examples/hot_reload_demo.rb
 ```
 
 ## Advanced Features
@@ -318,17 +326,19 @@ program.run
 
 - **`Milktea::Model`**: Base class for all UI components
 - **`Milktea::Container`**: Layout container with flexbox-style properties
+- **`Milktea::Text`**: Unicode-aware text component with dual rendering modes
 - **`Milktea::Application`**: High-level application wrapper
 - **`Milktea::Program`**: Main application runtime
-- **`Milktea::Message`**: Standard message types (KeyPress, Exit, Resize, Reload)
+- **`Milktea::Message`**: Standard message types for application events
 
 ### Message System
 
-- **`Message::KeyPress`**: Keyboard input events
+- **`Message::KeyPress`**: Keyboard input events with key details
+- **`Message::Tick`**: Timing events with timestamps for animations
 - **`Message::Exit`**: Application termination
-- **`Message::Resize`**: Terminal size changes
-- **`Message::Reload`**: Hot reload events
-- **`Message::None`**: No-operation message
+- **`Message::Resize`**: Terminal size changes  
+- **`Message::Reload`**: Hot reload events (development)
+- **`Message::None`**: No-operation message (no render)
 
 For detailed API documentation, see the [documentation website](https://rubydoc.info/gems/milktea).
 
