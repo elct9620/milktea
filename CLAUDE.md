@@ -202,7 +202,63 @@ This project follows Clean Architecture and Domain-Driven Design (DDD) principle
 
 Follow these conventions when writing RSpec tests:
 
-1. **ALWAYS prefer one-line `it { ... }` syntax**:
+### Critical Anti-Patterns to Avoid
+
+**NEVER use introspection methods to test private implementation details:**
+
+```ruby
+# BAD - Never use these anti-patterns
+it { expect(program.send(:check_resize)).to be_nil }
+it { expect(subject.instance_variable_get(:@output)).to eq($stdout) }
+it { expect(object.send(:private_method)).to eq(value) }
+
+# GOOD - Test through public API and observable behavior
+it { expect(runtime).to have_received(:enqueue) }
+it { expect(output.string).to include("expected content") }
+it { expect(program).to respond_to(:stop) }
+```
+
+**Why these are anti-patterns:**
+- Tests implementation details instead of behavior
+- Makes tests brittle and coupled to internal structure  
+- Violates encapsulation principles
+- Makes refactoring difficult
+
+**Always test through public interfaces and observable outcomes.**
+
+### Core Testing Conventions
+
+1. **Use `describe` blocks to reference actual methods**:
+   ```ruby
+   # GOOD - Reference actual methods
+   describe "#initialize" do
+   describe "#update" do  
+   describe "#with" do
+   describe ".configure" do  # Class method
+   describe ".new" do       # Class method
+   
+   # BAD - Generic descriptions that don't map to methods
+   describe "initialization" do
+   describe "test creation" do
+   describe "updating behavior" do
+   describe "configuration setup" do
+   ```
+
+2. **Use `context` blocks with "when" for conditional scenarios**:
+   ```ruby
+   # GOOD - Always start context with "when" for conditions
+   context "when merging provided state with default state" do
+   context "when no config is provided" do
+   context "when runtime is running" do
+   context "when renderer detects resize" do
+   
+   # BAD - Don't use context for non-conditional descriptions
+   context "merging state" do
+   context "configuration testing" do  
+   context "with custom values" do
+   ```
+
+3. **ALWAYS prefer one-line `it { ... }` syntax**:
    ```ruby
    # Preferred - Always use this when possible
    it { expect(model.state[:count]).to eq(0) }
@@ -215,7 +271,7 @@ Follow these conventions when writing RSpec tests:
    end
    ```
 
-2. **Use `subject` to define test targets**:
+4. **Use `subject` to define test targets**:
    ```ruby
    subject(:program) { described_class.new }
    subject(:new_model) { model.with(count: 5) }
@@ -226,7 +282,7 @@ Follow these conventions when writing RSpec tests:
    subject { described_class.env }
    ```
 
-3. **Use `let` for test dependencies and lazy evaluation**:
+5. **Use `let` for test dependencies and lazy evaluation**:
    ```ruby
    let(:output) { StringIO.new }
    let(:new_model) { result.first }
@@ -234,7 +290,7 @@ Follow these conventions when writing RSpec tests:
    let(:original_children) { parent_model.children }
    ```
 
-4. **Use `context` to group related scenarios and enable one-liners**:
+6. **Use `context` to group related scenarios and enable one-liners**:
    ```ruby
    # Good - Use context to set up scenarios for one-line tests
    context "when merging provided state with default state" do
@@ -251,7 +307,7 @@ Follow these conventions when writing RSpec tests:
    end
    ```
 
-5. **Use `is_expected` when testing the subject directly**:
+7. **Use `is_expected` when testing the subject directly**:
    ```ruby
    it { is_expected.to be_running }  # Preferred
    it { is_expected.not_to be(model) }
@@ -263,7 +319,7 @@ Follow these conventions when writing RSpec tests:
    it { expect(described_class.root).to be_a(Pathname) }
    ```
 
-6. **Use `before` blocks for setup actions, not variable assignments**:
+8. **Use `before` blocks for setup actions, not variable assignments**:
    ```ruby
    # Good - Setup actions in before blocks
    context "when configuring with block" do
@@ -284,13 +340,13 @@ Follow these conventions when writing RSpec tests:
    end
    ```
 
-7. **Use `.to change()` for testing immutability**:
+9. **Use `.to change()` for testing immutability**:
    ```ruby
    it { expect { model.update(:increment) }.not_to change(model, :state) }
    it { expect { model.with(count: 5) }.not_to change(model, :state) }
    ```
 
-7. **Each `it` block should have only one expectation**:
+10. **Each `it` block should have only one expectation**:
    ```ruby
    # Good - Separate one-line tests
    it { expect(new_model).not_to be(model) }
@@ -304,7 +360,7 @@ Follow these conventions when writing RSpec tests:
    end
    ```
 
-8. **Transform multi-line tests into context + one-liners**:
+11. **Transform multi-line tests into context + one-liners**:
    ```ruby
    # Good - Use context to enable one-liner
    context "when called on base class" do
@@ -328,7 +384,7 @@ Follow these conventions when writing RSpec tests:
    end
    ```
 
-10. **PRIORITY: Transform ANY multi-line test into context + one-liner**:
+12. **PRIORITY: Transform ANY multi-line test into context + one-liner**:
     ```ruby
     # If you find yourself writing this:
     it "merges provided state with default state" do
@@ -342,24 +398,6 @@ Follow these conventions when writing RSpec tests:
 
       it { expect(custom_model.state[:count]).to eq(5) }
     end
-    ```
-
-11. **Never test private instance variables directly**:
-    ```ruby
-    # Bad - Testing implementation details
-    it { expect(subject.instance_variable_get(:@output)).to eq($stdout) }
-    
-    # Good - Testing public behavior with one-liner
-    it { expect(output.string).to include("expected content") }
-    ```
-
-12. **Focus on observable behavior, not implementation**:
-    ```ruby
-    # Bad - Checking internal state
-    it { expect(program.instance_variable_get(:@renderer)).to be_a(Milktea::Renderer) }
-    
-    # Good - Testing actual public behavior with one-liner
-    it { expect(runtime).to have_received(:stop) }
     ```
 
 13. **Prefer `instance_double` over extensive `allow` calls**:
@@ -384,7 +422,7 @@ Follow these conventions when writing RSpec tests:
     end
     ```
 
-13. **Use spies for testing delegation instead of expect().to receive()**:
+14. **Use spies for testing delegation instead of expect().to receive()**:
     ```ruby
     # Bad - Pre-setting expectations
     it "delegates to runtime stop" do
@@ -401,7 +439,7 @@ Follow these conventions when writing RSpec tests:
     end
     ```
 
-14. **Use RSpec's `output` matcher for testing stdout/stderr**:
+15. **Use RSpec's `output` matcher for testing stdout/stderr**:
     ```ruby
     # Good - Using output matcher
     it "prints to stdout" do
@@ -422,7 +460,7 @@ Follow these conventions when writing RSpec tests:
     end
     ```
 
-15. **Use `allow(ENV).to receive(:fetch)` for environment variable mocking**:
+16. **Use `allow(ENV).to receive(:fetch)` for environment variable mocking**:
     ```ruby
     # Good - Mock ENV.fetch calls
     before { allow(ENV).to receive(:fetch).with("MILKTEA_ENV", nil).and_return("test") }
@@ -432,7 +470,7 @@ Follow these conventions when writing RSpec tests:
     after { ENV.delete("MILKTEA_ENV") }
     ```
 
-16. **Structure module/class method tests with clear subject definitions**:
+17. **Structure module/class method tests with clear subject definitions**:
     ```ruby
     describe ".root" do
       subject { described_class.root }
@@ -453,7 +491,7 @@ Follow these conventions when writing RSpec tests:
     end
     ```
 
-17. **Use named subjects for configuration testing**:
+18. **Use named subjects for configuration testing**:
     ```ruby
     describe ".configure" do
       subject(:config) { described_class.config }  # Named subject for clarity
@@ -474,7 +512,15 @@ Follow these conventions when writing RSpec tests:
 
 ### RSpec Style Summary
 
-**CRITICAL RULE**: Always prefer `it { ... }` one-line syntax. If you find yourself writing a multi-line `it` block, immediately refactor it into a `context` with a `subject` to enable one-line tests.
+**CRITICAL ANTI-PATTERNS - NEVER DO THESE:**
+- Never use `send(:private_method)` to test private methods
+- Never use `instance_variable_get(:@var)` to test private variables
+- Always test through public interfaces and observable behavior
+
+**CRITICAL CONVENTIONS:**
+- `describe` blocks must reference actual methods (`#initialize`, `.configure`)
+- `context` blocks must start with "when" for conditional scenarios
+- Always prefer `it { ... }` one-line syntax over multi-line blocks
 
 **The Golden Pattern**:
 ```ruby
