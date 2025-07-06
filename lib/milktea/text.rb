@@ -8,8 +8,9 @@ module Milktea
   class Text < Container
     def view
       return "" if content.empty?
+      return render(truncated_lines) if state[:wrap]
 
-      render(truncated_lines)
+      render_truncated
     end
 
     private
@@ -18,6 +19,14 @@ module Milktea
       lines.map.with_index do |line, index|
         TTY::Cursor.move_to(bounds.x, bounds.y + index) + line
       end.join
+    end
+
+    def render_truncated
+      cleaned_content = content.gsub("\n", "")
+      max_length = bounds.width * bounds.height
+      truncated_content = Strings.truncate(cleaned_content, max_length, trailing: state[:trailing])
+
+      TTY::Cursor.move_to(bounds.x, bounds.y) + truncated_content
     end
 
     def truncated_lines
@@ -36,7 +45,7 @@ module Milktea
     end
 
     def default_state
-      { content: "" }.freeze
+      { content: "", wrap: false, trailing: "…" }.freeze
     end
   end
 end

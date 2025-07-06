@@ -45,7 +45,8 @@ RSpec.describe Milktea::Text do
         described_class.new(
           content: "This is a very long line that needs to be wrapped",
           width: 10,
-          height: 10
+          height: 10,
+          wrap: true
         )
       end
 
@@ -65,7 +66,8 @@ RSpec.describe Milktea::Text do
           content: "Line 1\nLine 2\nLine 3 that is very long and will " \
                    "definitely be truncated because it exceeds width\nLine 4\nLine 5",
           width: 20,
-          height: 3
+          height: 3,
+          wrap: true
         )
       end
 
@@ -83,7 +85,8 @@ RSpec.describe Milktea::Text do
         described_class.new(
           content: "This is a very long text that will wrap into multiple lines and exceed the height bounds",
           width: 10,
-          height: 3
+          height: 3,
+          wrap: true
         )
       end
 
@@ -111,7 +114,8 @@ RSpec.describe Milktea::Text do
         described_class.new(
           content: "ラドクリフ、マラソン五輪代表に1万m出場にも含み",
           width: 8,
-          height: 10
+          height: 10,
+          wrap: true
         )
       end
 
@@ -145,12 +149,103 @@ RSpec.describe Milktea::Text do
           width: 20,
           height: 5,
           x: 10,
-          y: 5
+          y: 5,
+          wrap: true
         )
       end
 
       it { expect(text.view).to include(TTY::Cursor.move_to(10, 5)) }
       it { expect(text.view).to include(TTY::Cursor.move_to(10, 6)) }
+    end
+  end
+
+  describe "truncation mode (wrap: false)" do
+    context "with content that fits within bounds" do
+      subject(:text) do
+        described_class.new(
+          content: "Short text",
+          width: 20,
+          height: 5
+        )
+      end
+
+      it { expect(text.view).to include("Short text") }
+      it { expect(text.view).not_to include("…") }
+    end
+
+    context "with content exceeding total character limit" do
+      subject(:text) do
+        described_class.new(
+          content: "This is a very long text that will definitely exceed the character limit",
+          width: 10,
+          height: 2
+        )
+      end
+
+      let(:output) { text.view }
+
+      it { expect(output).to include("…") }
+      it { expect(output.length).to be <= 20 + TTY::Cursor.move_to(0, 0).length + 1 }
+    end
+
+    context "with newlines in content" do
+      subject(:text) do
+        described_class.new(
+          content: "Line 1\nLine 2\nLine 3",
+          width: 20,
+          height: 1
+        )
+      end
+
+      let(:output) { text.view }
+
+      it { expect(output).to include("Line 1Line 2Line 3") }
+      it { expect(output).not_to include("\n") }
+    end
+
+    context "with custom trailing" do
+      subject(:text) do
+        described_class.new(
+          content: "This is a very long text that will be truncated",
+          width: 5,
+          height: 2,
+          trailing: "..."
+        )
+      end
+
+      let(:output) { text.view }
+
+      it { expect(output).to include("...") }
+      it { expect(output).not_to include("…") }
+    end
+
+    context "with unicode content and truncation" do
+      subject(:text) do
+        described_class.new(
+          content: "ラドクリフ、マラソン五輪代表に1万m出場にも含み",
+          width: 5,
+          height: 2
+        )
+      end
+
+      let(:output) { text.view }
+
+      it { expect(output).to include("…") }
+      it { expect(output.scan(/[一-龯ひらがなカタナ]/).length).to be <= 10 }
+    end
+
+    context "with positioning" do
+      subject(:text) do
+        described_class.new(
+          content: "Positioned text that is long",
+          width: 10,
+          height: 1,
+          x: 5,
+          y: 3
+        )
+      end
+
+      it { expect(text.view).to include(TTY::Cursor.move_to(5, 3)) }
     end
   end
 
