@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    milktea (0.1.0)
+    milktea (0.2.0)
       strings (~> 0.2)
       timers (~> 4.3)
       tty-cursor (~> 0.7)
