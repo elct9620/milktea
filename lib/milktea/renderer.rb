@@ -22,13 +22,13 @@ module Milktea
 
     def setup_screen
       @output.print @cursor.hide
-      @output.print @cursor.clear_screen
+      @output.print @cursor.clear_screen_down
       @output.print @cursor.move_to(0, 0)
       @output.flush
     end
 
     def restore_screen
-      @output.print @cursor.clear_screen
+      @output.print @cursor.clear_screen_down
       @output.print @cursor.show
       @output.flush
     end
